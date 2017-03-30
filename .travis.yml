@@ -23,12 +23,22 @@ env:
     - CI_TRACE=false
     - CI_QUIET=true
   matrix:
-    - BUILD_TYPE=default
+    - BUILD_TYPE=default CI_CZMQ_VER=4
+    - BUILD_TYPE=default CI_CZMQ_VER=3
     - BUILD_TYPE=default-Werror
 
 matrix:
   include:
-  - env: BUILD_TYPE=valgrind
+  - env: BUILD_TYPE=valgrind CI_CZMQ_VER=3
+    os: linux
+    dist: trusty
+    sudo: required
+    addons:
+      apt:
+        packages:
+        - valgrind
+        - liblua5.1-0-dev
+  - env: BUILD_TYPE=valgrind CI_CZMQ_VER=4
     os: linux
     dist: trusty
     sudo: required
