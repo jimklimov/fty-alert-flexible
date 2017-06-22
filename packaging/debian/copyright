@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: fty-alert-flexible
 
 Files: *
-Copyright: 2015- fty-alert-flexible Developers <email@hostname.com>
+Copyright: 2015- fty-alert-flexible Developers <eatonipcopensource@eaton.com>
 License: fty-alert-flexible_license
  Copyright (C) 2016 - 2017 Tomas Halman                                 
                                                                         
