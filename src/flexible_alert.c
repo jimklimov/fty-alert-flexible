@@ -322,6 +322,10 @@ flexible_alert_handle_metric_sensor(flexible_alert_t *self, fty_proto_t **ftymsg
 
     // get name of asset based on GPIO port
     const char *sensor_aux_port = fty_proto_aux_string(ftymsg, FTY_PROTO_METRICS_AUX_PORT, NULL);
+    if (!sensor_aux_port) {
+        zsys_debug ("Sensor name='%s' don't have aux port value set", fty_proto_name(ftymsg));
+        return;
+    }
     if (4 > strlen(sensor_aux_port)) {
         zsys_debug ("Sensor name='%s' type is shorter than expected, should be 'status.GPIx', is '%s'", fty_proto_name(ftymsg), fty_proto_type(ftymsg));
         return;
