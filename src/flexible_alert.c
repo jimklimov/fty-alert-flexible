@@ -376,14 +376,14 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
     }
     zlist_destroy (&keys);
 
-    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, "model", "")))
+    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_MODEL, "")))
         return 1;
-    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, "device.part", "")))
+    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_DEVICE_PART, "")))
         return 1;
 
-    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, "type", "")))
+    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_AUX_TYPE, "")))
         return 1;
-    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, "subtype", "")))
+    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_AUX_SUBTYPE, "")))
         return 1;
 
     return 0;
