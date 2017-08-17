@@ -435,13 +435,16 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
             zhash_update (self->enames, assetname, (void *)ename);
             zhash_freefn (self->enames, assetname, ename_freefn);
         }
-        if (0 == strcmp(fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL), "sensorgpio")) {
-            const char *port = fty_proto_aux_string(ftymsg, "", NULL);
-            if (!port) {
-                zsys_debug ("asset '%s' subtype sensorgpio don't have ext port value set", assetname);
-                return;
+        const char *aux_subtype = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL);
+        if (aux_subtype) {
+            if (0 == strcmp(aux_subtype, "sensorgpio")) {
+                const char *port = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_EXT_PORT, NULL);
+                if (!port) {
+                    zsys_debug ("asset '%s' subtype sensorgpio don't have ext port value set", assetname);
+                    return;
+                }
+                zhash_update (self->sensors_gpio_port, assetname, (void *)port);
             }
-            zhash_update (self->sensors_gpio_port, assetname, (void *)port);
         }
     }
 }
