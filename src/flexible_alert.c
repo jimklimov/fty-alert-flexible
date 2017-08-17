@@ -346,7 +346,7 @@ flexible_alert_handle_metric_sensor(flexible_alert_t *self, fty_proto_t **ftymsg
     }
     fty_proto_set_name(ftymsg, "%s", sensor_name);
 
-    flexible_alert_handle_metric_sensor(self, ftymsg_p);
+    flexible_alert_handle_metric(self, ftymsg_p);
 }
 
 //  --------------------------------------------------------------------------
@@ -654,13 +654,15 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     flexible_alert_handle_asset (self, fmsg);
                 }
                 if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
-                    const char *sender = mlm_client_address(self->mlm);
-                    if (0 == streq(sender, FTY_PROTO_STREAM_METRICS)) {
+                    const char *address = mlm_client_address(self->mlm);
+                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS)) {
                         // messages from FTY_PROTO_STREAM_METRICS are regular metrics
                         flexible_alert_handle_metric (self, &fmsg);
-                    } else if (0 == streq(sender, FTY_PROTO_STREAM_METRICS_SENSOR)) {
+                    } else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
                         // messages from FTY_PROTO_STREAM_METRICS_SENSORS are gpio sensors
                         flexible_alert_handle_metric_sensor (self, &fmsg);
+                    } else {
+                        zsys_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
                     }
                 }
                 fty_proto_destroy (&fmsg);
