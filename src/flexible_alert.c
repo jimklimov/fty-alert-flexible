@@ -564,7 +564,7 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
         zmsg_destroy (&msg);
     }
     rule_t *rule = (rule_t *) zhash_lookup (self->rules, rule_name (newrule));
-    if (rule) {
+    if (rule && strstr (rule_name (rule), "sensorgpio") == NULL) {
         zsys_error ("Rule %s exists", rule_name (rule));
         zmsg_addstr (reply, "ERROR");
         zmsg_addstr (reply, "ALREADY_EXISTS");
