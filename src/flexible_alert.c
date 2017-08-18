@@ -35,6 +35,7 @@ struct _flexible_alert_t {
     zhash_t *assets;
     zhash_t *metrics;
     zhash_t *enames;
+    zhash_t *sensors_gpio_port;
     mlm_client_t *mlm;
 };
 
@@ -79,6 +80,7 @@ flexible_alert_new (void)
     self->assets = zhash_new ();
     self->metrics = zhash_new ();
     self->enames = zhash_new ();
+    self->sensors_gpio_port = zhash_new();
     zhash_autofree (self->enames);
     self->mlm = mlm_client_new ();
     return self;
@@ -98,6 +100,7 @@ flexible_alert_destroy (flexible_alert_t **self_p)
         zhash_destroy (&self->assets);
         zhash_destroy (&self->metrics);
         zhash_destroy (&self->enames);
+        zhash_destroy(&self->sensors_gpio_port);
         mlm_client_destroy (&self->mlm);
         //  Free object itself
         free (self);
@@ -308,6 +311,45 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
 }
 
 //  --------------------------------------------------------------------------
+//  Function handles infoming metric sensors, fix message and pass it to metrics evaluation
+
+void
+flexible_alert_handle_metric_sensor(flexible_alert_t *self, fty_proto_t **ftymsg_p)
+{
+    if (!self || !ftymsg_p || !*ftymsg_p) return;
+    fty_proto_t *ftymsg = *ftymsg_p;
+    if (fty_proto_id (ftymsg) != FTY_PROTO_METRIC) return;
+
+    // get name of asset based on GPIO port
+    const char *sensor_aux_port = fty_proto_aux_string(ftymsg, FTY_PROTO_METRICS_AUX_PORT, NULL);
+    if (!sensor_aux_port) {
+        zsys_debug ("Sensor name='%s' don't have aux port value set", fty_proto_name(ftymsg));
+        return;
+    }
+    if (4 > strlen(sensor_aux_port)) {
+        zsys_debug ("Sensor name='%s' type is shorter than expected, should be 'status.GPIx', is '%s'", fty_proto_name(ftymsg), fty_proto_type(ftymsg));
+        return;
+    }
+    char *asset_port = (char *) zhash_first(self->sensors_gpio_port);
+    const char *sensor_name = NULL;
+    while (asset_port) {
+        if (0 == strcmp(asset_port, fty_proto_type(ftymsg) + 3)) { // skip 3 characters = 'GPI'
+            sensor_name = zhash_cursor(self->sensors_gpio_port);
+            break;
+        }
+        asset_port = (char *) zhash_next(self->sensors_gpio_port);
+    }
+
+    if (!sensor_name) {
+        zsys_debug ("No sensor found on port '%d'", asset_port);
+        return;
+    }
+    fty_proto_set_name(ftymsg, "%s", sensor_name);
+
+    flexible_alert_handle_metric(self, ftymsg_p);
+}
+
+//  --------------------------------------------------------------------------
 //  Function returns true if function should be evaluated for particular asset.
 //  This is decided by asset name (json "assets": []) or group (json "groups":[])
 
@@ -334,14 +376,14 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
     }
     zlist_destroy (&keys);
 
-    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, "model", "")))
+    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_MODEL, "")))
         return 1;
-    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, "device.part", "")))
+    if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_DEVICE_PART, "")))
         return 1;
 
-    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, "type", "")))
+    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_AUX_TYPE, "")))
         return 1;
-    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, "subtype", "")))
+    if (rule_type_exists (rule, fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_AUX_SUBTYPE, "")))
         return 1;
 
     return 0;
@@ -366,6 +408,9 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         }
         if (zhash_lookup (self->enames, assetname)) {
             zhash_delete (self->enames, assetname);
+        }
+        if (zhash_lookup (self->sensors_gpio_port, assetname)) {
+            zhash_delete (self->sensors_gpio_port, assetname);
         }
         return;
     }
@@ -393,6 +438,17 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         if (ename) {
             zhash_update (self->enames, assetname, (void *)ename);
             zhash_freefn (self->enames, assetname, ename_freefn);
+        }
+        const char *aux_subtype = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL);
+        if (aux_subtype) {
+            if (0 == strcmp(aux_subtype, "sensorgpio")) {
+                const char *port = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_EXT_PORT, NULL);
+                if (!port) {
+                    zsys_debug ("asset '%s' subtype sensorgpio don't have ext port value set", assetname);
+                    return;
+                }
+                zhash_update (self->sensors_gpio_port, assetname, (void *)port);
+            }
         }
     }
 }
@@ -598,7 +654,16 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     flexible_alert_handle_asset (self, fmsg);
                 }
                 if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
-                    flexible_alert_handle_metric (self, &fmsg);
+                    const char *address = mlm_client_address(self->mlm);
+                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS)) {
+                        // messages from FTY_PROTO_STREAM_METRICS are regular metrics
+                        flexible_alert_handle_metric (self, &fmsg);
+                    } else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
+                        // messages from FTY_PROTO_STREAM_METRICS_SENSORS are gpio sensors
+                        flexible_alert_handle_metric_sensor (self, &fmsg);
+                    } else {
+                        zsys_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
+                    }
                 }
                 fty_proto_destroy (&fmsg);
             } else if (streq (mlm_client_command (self->mlm), "MAILBOX DELIVER")) {
