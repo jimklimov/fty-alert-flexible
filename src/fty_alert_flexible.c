@@ -31,6 +31,7 @@
 static const char *ACTOR_NAME = "fty-alert-flexible";
 static const char *ENDPOINT = "ipc://@/malamute";
 static const char *RULES_DIR = "./rules";
+static const char *STATE_FILE_GPIO_PORTS = "/var/lib/fty/fty-alert-flexible/gpio_ports.state";
 
 int main (int argc, char *argv [])
 {
@@ -73,9 +74,10 @@ int main (int argc, char *argv [])
     zstr_sendx (server, "BIND", ENDPOINT, ACTOR_NAME, NULL);
     zstr_sendx (server, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
-    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, ".*", NULL);
+    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (server, "LOADRULES", RULES_DIR, NULL);
+    zstr_sendx (server, "SETGPIOSTATEFILE", STATE_FILE_GPIO_PORTS, NULL);
     while (!zsys_interrupted) {
         zmsg_t *msg = zactor_recv (server);
         zmsg_destroy (&msg);
