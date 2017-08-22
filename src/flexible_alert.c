@@ -35,7 +35,7 @@ struct _flexible_alert_t {
     zhash_t *assets;
     zhash_t *metrics;
     zhash_t *enames;
-    zhash_t *sensors_gpio_port;
+    zhash_t *gpio_port;
     mlm_client_t *mlm;
 };
 
@@ -80,9 +80,9 @@ flexible_alert_new (void)
     self->assets = zhash_new ();
     self->metrics = zhash_new ();
     self->enames = zhash_new ();
-    self->sensors_gpio_port = zhash_new();
+    self->gpio_port = zhash_new();
     zhash_autofree (self->enames);
-    zhash_autofree (self->sensors_gpio_port);
+    zhash_autofree (self->gpio_port);
     self->mlm = mlm_client_new ();
     return self;
 }
@@ -101,7 +101,7 @@ flexible_alert_destroy (flexible_alert_t **self_p)
         zhash_destroy (&self->assets);
         zhash_destroy (&self->metrics);
         zhash_destroy (&self->enames);
-        zhash_destroy(&self->sensors_gpio_port);
+        zhash_destroy(&self->gpio_port);
         mlm_client_destroy (&self->mlm);
         //  Free object itself
         free (self);
@@ -332,7 +332,7 @@ flexible_alert_handle_metric_sensor(flexible_alert_t *self, fty_proto_t **ftymsg
         return;
     }
 
-    const char *sensor_name = (char *)zhash_lookup(self->sensors_gpio_port, sensor_aux_port + 3);
+    const char *sensor_name = (char *)zhash_lookup(self->gpio_port, sensor_aux_port + 3);
 
     if (!sensor_name) {
         zsys_debug ("No sensor found on port '%s'", sensor_aux_port + 3);
@@ -387,14 +387,14 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
 //  Support function that deletes stored gpio sensors by asset name.
 //  Note that keys are actually ports, and names are values.
 
-void try_delete_sensors_gpio_port(flexible_alert_t *self, const char *assetname) {
-    char *asset_name = (char *) zhash_first(self->sensors_gpio_port);
+void try_delete_gpio_port(flexible_alert_t *self, const char *assetname) {
+    char *asset_name = (char *) zhash_first(self->gpio_port);
     while (asset_name) {
         if (0 == strcmp(assetname, asset_name)) { // skip 3 characters = 'GPI'
-            zhash_delete(self->sensors_gpio_port, zhash_cursor(self->sensors_gpio_port));
+            zhash_delete(self->gpio_port, zhash_cursor(self->gpio_port));
             break;
         }
-        asset_name = (char *) zhash_next(self->sensors_gpio_port);
+        asset_name = (char *) zhash_next(self->gpio_port);
     }
 }
 
@@ -403,7 +403,7 @@ void try_delete_sensors_gpio_port(flexible_alert_t *self, const char *assetname)
 //  list of rules valid for this asset.
 
 void
-flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg, char *gpio_port_state_file_path)
+flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
 {
     if (!self || !ftymsg) return;
     if (fty_proto_id (ftymsg) != FTY_PROTO_ASSET) return;
@@ -418,13 +418,8 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg, char *
         if (zhash_lookup (self->enames, assetname)) {
             zhash_delete (self->enames, assetname);
         }
-        if (zhash_lookup (self->sensors_gpio_port, assetname)) {
-            try_delete_sensors_gpio_port(self, assetname);
-            if (0 == zhash_save(self->sensors_gpio_port, gpio_port_state_file_path)) {
-                zsys_debug("Asset was removed, updated in state file");
-            } else {
-                zsys_debug("Asset was removed, updating in state file failed!");
-            }
+        if (zhash_lookup (self->gpio_port, assetname)) {
+            try_delete_gpio_port(self, assetname);
         }
         return;
     }
@@ -443,7 +438,7 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg, char *
         if (! zlist_size (functions_for_asset)) {
             zsys_debug ("no rule for %s", assetname);
             zhash_delete (self->assets, assetname);
-            try_delete_sensors_gpio_port(self, assetname);
+            try_delete_gpio_port(self, assetname);
             zlist_destroy (&functions_for_asset);
             return;
         }
@@ -463,15 +458,10 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg, char *
                     zsys_error ("Asset '%s' subtype sensorgpio don't have ext port value set", assetname);
                     return;
                 }
-                zsys_debug("Adding sensor '%s' with port '%s' to zhash sensors_gpio_port", assetname, port);
+                zsys_debug("Adding sensor '%s' with port '%s' to zhash gpio_port", assetname, port);
                 // key-values are reveted for easier search operation that is more common than delete
-                zhash_update (self->sensors_gpio_port, port, (void *)assetname);
-                zhash_freefn (self->sensors_gpio_port, port, ename_freefn); // since port is char * as ename, just use it's free function
-                if (0 == zhash_save(self->sensors_gpio_port, gpio_port_state_file_path)) {
-                    zsys_debug("New asset information came for GPIO sensors, saved to state file");
-                } else {
-                    zsys_debug("New asset information came for GPIO sensors, saving to state file failed!");
-                }
+                zhash_update (self->gpio_port, port, (void *)assetname);
+                zhash_freefn (self->gpio_port, port, ename_freefn); // since port is char * as ename, just use it's free function
             }
         }
     }
@@ -623,7 +613,6 @@ flexible_alert_actor (zsock_t *pipe, void *args)
     assert (self);
     zsock_signal (pipe, 0);
     char *ruledir = NULL;
-    char *gpio_port_status_file_path = NULL;
 
     zpoller_t *poller = zpoller_new (mlm_client_msgpipe(self->mlm), pipe, NULL);
     while (!zsys_interrupted) {
@@ -665,14 +654,13 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     assert (ruledir);
                     flexible_alert_load_rules (self, ruledir);
                 }
-                else if (streq (cmd, "SETGPIOSTATEFILE")) {
-                    gpio_port_status_file_path = zmsg_popstr (msg);
-                    assert (gpio_port_status_file_path);
-                    if (0 == zhash_load(self->sensors_gpio_port, gpio_port_status_file_path)) {
-                        zsys_debug("sensors_gpio_port zhash succesfully loaded from file '%s'", gpio_port_status_file_path);
-                    } else {
-                        zsys_debug("sensors_gpio_port zhash wasn't loaded from file '%s'", gpio_port_status_file_path);
+                else if (streq (cmd, "ASKFORASSETS")) {
+                    zmsg_t *republish = zmsg_new ();
+                    int rv = mlm_client_sendto (self->mlm, "asset-agent", "REPUBLISH", NULL, 5000, &republish);
+                    if ( rv != 0) {
+                        zsys_error ("Cannot send REPUBLISH message");
                     }
+                    zmsg_destroy (&republish);
                 }
 
                 zstr_free (&cmd);
@@ -684,7 +672,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
             if (is_fty_proto (msg)) {
                 fty_proto_t *fmsg = fty_proto_decode (&msg);
                 if (fty_proto_id (fmsg) == FTY_PROTO_ASSET) {
-                    flexible_alert_handle_asset (self, fmsg, gpio_port_status_file_path);
+                    flexible_alert_handle_asset (self, fmsg);
                 }
                 if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
                     const char *address = mlm_client_address(self->mlm);
@@ -755,7 +743,6 @@ flexible_alert_actor (zsock_t *pipe, void *args)
         }
     }
     zstr_free (&ruledir);
-    zstr_free (&gpio_port_status_file_path);
     zpoller_destroy (&poller);
     flexible_alert_destroy (&self);
 }
