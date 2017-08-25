@@ -352,6 +352,15 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
 {
     if (!rule || !ftymsg) return 0;
 
+    if (streq (fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL), "sensorgpio") )
+    {
+        if (rule_asset_exists (rule, fty_proto_name (ftymsg)) &&
+            rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_MODEL, "")) )
+            return 1;
+        else
+            return 0;
+    }
+
     if (rule_asset_exists (rule, fty_proto_name (ftymsg)))
         return 1;
 
@@ -369,6 +378,7 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
         key = (char *)zlist_next (keys);
     }
     zlist_destroy (&keys);
+
 
     if (rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_MODEL, "")))
         return 1;
