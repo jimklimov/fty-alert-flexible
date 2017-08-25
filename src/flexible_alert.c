@@ -352,6 +352,16 @@ is_rule_for_this_asset (rule_t *rule, fty_proto_t *ftymsg)
 {
     if (!rule || !ftymsg) return 0;
 
+    const char *subtype = fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_SUBTYPE, "");
+    if (streq (subtype, "sensorgpio") )
+    {
+        if (rule_asset_exists (rule, fty_proto_name (ftymsg)) &&
+            rule_model_exists (rule, fty_proto_ext_string (ftymsg, FTY_PROTO_ASSET_EXT_MODEL, "")) )
+            return 1;
+        else
+            return 0;
+    }
+
     if (rule_asset_exists (rule, fty_proto_name (ftymsg)))
         return 1;
 
@@ -785,6 +795,7 @@ flexible_alert_test (bool verbose)
     zstr_sendx (fs, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
     zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
+    zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, ".*", NULL);
     char *rules_dir = zsys_sprintf ("%s/rules", SELFTEST_DIR_RO);
     assert (rules_dir != NULL);
     zstr_sendx (fs, "LOADRULES", rules_dir, NULL);
