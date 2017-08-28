@@ -459,22 +459,23 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
             zhash_update (self->enames, assetname, (void *)ename);
             zhash_freefn (self->enames, assetname, ename_freefn);
         }
-        const char *aux_subtype = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL);
-        if (aux_subtype) {
-            zsys_debug("Comparing '%s' to '%s' to find gpio sensors", aux_subtype,"sensorgpio");
-            if (0 == strcmp(aux_subtype, "sensorgpio")) {
-                const char *port = fty_proto_ext_string(ftymsg, FTY_PROTO_ASSET_EXT_PORT, NULL);
-                if (!port) {
-                    zsys_error ("Asset '%s' subtype sensorgpio don't have ext port value set", assetname);
-                    return;
-                }
-                zsys_debug("Adding sensor '%s' with port '%s' to zhash gpio_port", assetname, port);
-                // key-values are reveted for easier search operation that is more common than delete
-                zhash_update (self->gpio_port, port, (void *)assetname);
-                zhash_freefn (self->gpio_port, port, ename_freefn); // since port is char * as ename, just use it's free function
+    }
+    const char *aux_subtype = fty_proto_aux_string(ftymsg, FTY_PROTO_ASSET_SUBTYPE, NULL);
+    if (aux_subtype) {
+        zsys_debug("Comparing '%s' to '%s' to find gpio sensors", aux_subtype,"sensorgpio");
+        if (0 == strcmp(aux_subtype, "sensorgpio")) {
+            const char *port = fty_proto_ext_string(ftymsg, FTY_PROTO_ASSET_EXT_PORT, NULL);
+            if (!port) {
+                zsys_error ("Asset '%s' subtype sensorgpio don't have ext port value set", assetname);
+                return;
             }
+            zsys_debug("Adding sensor '%s' with port '%s' to zhash gpio_port", assetname, port);
+            // key-values are reveted for easier search operation that is more common than delete
+            zhash_update (self->gpio_port, port, (void *)assetname);
+            zhash_freefn (self->gpio_port, port, ename_freefn); // since port is char * as ename, just use it's free function
         }
     }
+
 }
 
 //  --------------------------------------------------------------------------
