@@ -36,6 +36,7 @@ struct _flexible_alert_t {
     zhash_t *metrics;
     zhash_t *enames;
     mlm_client_t *mlm;
+    bool verbose;
 };
 
 static void rule_freefn (void *rule)
@@ -81,6 +82,7 @@ flexible_alert_new (void)
     self->enames = zhash_new ();
     zhash_autofree (self->enames);
     self->mlm = mlm_client_new ();
+    self->verbose = false;
     return self;
 }
 
@@ -307,24 +309,51 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
     }
 }
 
+int
+ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
+{
+
+    if (!zhash_lookup (self->assets, sensor_name))
+    {
+        if (self->verbose)
+            zsys_info ("I have to ask for sensor  %s", sensor_name);
+
+        zmsg_t *msg = zmsg_new ();
+        zmsg_addstr (msg, "REPUBLISH");
+        zmsg_addstr (msg, sensor_name);
+
+        int rv = mlm_client_sendto (self->mlm, "asset-agent", "REPUBLISH" , NULL, 5000, &msg);
+        if (rv != 0)
+        {
+            zsys_error ("mlm_client_sendto (address = '%s', subject = '%s', timeout = '5000') for '%s' failed.",
+                        "asset-agent", "REPUBLISH", sensor_name);
+        }
+        return rv;
+    }
+    if (self->verbose)
+        zsys_info ("I know this sensor %s", sensor_name);
+    return 0;
+}
+
 //  --------------------------------------------------------------------------
 //  Function handles infoming metric sensors, fix message and pass it to metrics evaluation
 
 void
-flexible_alert_handle_metric_sensor(flexible_alert_t *self, fty_proto_t **ftymsg_p)
+flexible_alert_handle_metric_sensor (flexible_alert_t *self, fty_proto_t **ftymsg_p)
 {
     if (!self || !ftymsg_p || !*ftymsg_p) return;
     fty_proto_t *ftymsg = *ftymsg_p;
     if (fty_proto_id (ftymsg) != FTY_PROTO_METRIC) return;
 
     // get name of asset based on GPIO port
-    const char *sensor_name = fty_proto_aux_string(ftymsg, FTY_PROTO_METRICS_SENSOR_AUX_SNAME, NULL);
+    const char *sensor_name = fty_proto_aux_string (ftymsg, FTY_PROTO_METRICS_SENSOR_AUX_SNAME, NULL);
     if (!sensor_name) {
         zsys_debug ("No sensor name provided in sensor message");
         return;
     }
-    fty_proto_set_name(ftymsg, "%s", sensor_name);
 
+    ask_for_sensor (self, sensor_name);
+    fty_proto_set_name (ftymsg, "%s", sensor_name);
     flexible_alert_handle_metric(self, ftymsg_p);
 }
 
@@ -400,7 +429,7 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         }
         return;
     }
-    if (streq (operation, "update")) {
+    if (streq (operation, "update") || streq (operation, "inventory")) {
         zlist_t *functions_for_asset = zlist_new ();
         zlist_autofree (functions_for_asset);
 
@@ -525,7 +554,6 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
 {
     if (! self || !json || !dir) return NULL;
 
-
     rule_t *newrule = rule_new ();
     zmsg_t *reply = zmsg_new ();
     if(rule_parse (newrule, json) != 0) {
@@ -616,13 +644,11 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     assert (ruledir);
                     flexible_alert_load_rules (self, ruledir);
                 }
-                else if (streq (cmd, "ASKFORASSETS")) {
-                    zmsg_t *republish = zmsg_new ();
-                    int rv = mlm_client_sendto (self->mlm, "asset-agent", "REPUBLISH", NULL, 5000, &republish);
-                    if ( rv != 0) {
-                        zsys_error ("Cannot send REPUBLISH message");
-                    }
-                    zmsg_destroy (&republish);
+                else if (streq (cmd, "VERBOSE")) {
+                    self->verbose = true;
+                }
+                else {
+                    zsys_debug ("Unknown command.");
                 }
 
                 zstr_free (&cmd);
