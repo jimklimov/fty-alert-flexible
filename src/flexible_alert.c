@@ -265,6 +265,20 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
     const char *quantity = fty_proto_type (ftymsg);
     const char *description = fty_proto_aux_string (ftymsg, "description", "");
     const char *ename = (const char *) zhash_lookup (self->enames, assetname);
+    const char *extport = fty_proto_aux_string (ftymsg, "ext-port", NULL);
+    char * qty_dup = (char *)quantity;
+
+    // fix quantity for sensors connected to other sensors
+    if (extport) {
+        // only sensors connected to other sensors have ext-name set
+        const char *qty_len_helper = quantity;
+        // second . marks the length
+        while ((*qty_len_helper != '\0') && (*qty_len_helper != '.')) ++qty_len_helper;
+        ++qty_len_helper;
+        if (qty_len_helper == '\0') return; // malformed quantity
+        while ((*qty_len_helper != '\0') && (*qty_len_helper != '.')) ++qty_len_helper;
+        qty_dup = strndup(quantity, qty_len_helper - quantity);
+    }
 
     // produce nagios style alerts
     if (strncmp (quantity, "nagios.", 7) == 0 && strlen (description)) {
@@ -279,23 +293,31 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
                 description,
                 fty_proto_ttl (ftymsg)
             );
+            if (extport) {
+                free(qty_dup);
+            }
             return;
         }
     }
     zlist_t *functions_for_asset = (zlist_t *) zhash_lookup (self->assets, assetname);
-    if (! functions_for_asset) return;
+    if (! functions_for_asset) {
+        if (extport) {
+            free(qty_dup);
+        }
+        return;
+    }
 
     // this asset has some evaluation functions
     char *func = (char *) zlist_first (functions_for_asset);
     bool metric_saved =  false;
     while (func) {
         rule_t *rule = (rule_t *) zhash_lookup (self -> rules, func);
-        if (rule_metric_exists (rule, quantity)) {
+        if (rule_metric_exists (rule, qty_dup)) {
             // we have to evaluate this function for our asset
             // save metric into cache
             if (! metric_saved) {
                 fty_proto_set_time (ftymsg, time (NULL));
-                char *topic = zsys_sprintf ("%s@%s", quantity, assetname);
+                char *topic = zsys_sprintf ("%s@%s", qty_dup, assetname);
                 zhash_update (self->metrics, topic, ftymsg);
                 zhash_freefn (self->metrics, topic, ftymsg_freefn);
                 *ftymsg_p = NULL;
@@ -306,6 +328,9 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
             flexible_alert_evaluate (self, rule, assetname, ename);
         }
         func = (char *) zlist_next (functions_for_asset);
+    }
+    if (extport) {
+        free(qty_dup);
     }
 }
 
