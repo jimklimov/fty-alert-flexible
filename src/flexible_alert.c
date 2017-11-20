@@ -156,7 +156,7 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
 }
 
 void
-flexible_alert_send_alert (flexible_alert_t *self, const char *rulename, const char *actions, const char *asset, int result, const char *message, int ttl)
+flexible_alert_send_alert (flexible_alert_t *self, const char *rulename, zlist_t *actions, const char *asset, int result, const char *message, int ttl)
 {
     char *severity = "OK";
     if (result == -1 || result == 1) severity = "WARNING";
@@ -287,7 +287,7 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
             flexible_alert_send_alert (
                 self,
                 quantity,
-                "",
+                NULL,
                 fty_proto_name (ftymsg),
                 ivalue,
                 description,
