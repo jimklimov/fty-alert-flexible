@@ -247,6 +247,21 @@ flexible_alert_clean_metrics (flexible_alert_t *self)
     zlist_destroy (&topics);
 }
 
+
+// --------------------------------------------------------------------------
+// returns true if metric message belong to gpi sensor
+bool
+is_gpi_metric (fty_proto_t* metric)
+{
+    assert (metric);
+    const char * port = fty_proto_aux_string (metric, FTY_PROTO_METRICS_AUX_PORT, "");
+    if (strstr (port, "GPI"))
+        return true;
+    else
+        return false;
+}
+
+
 //  --------------------------------------------------------------------------
 //  Function handles infoming metrics, drives lua evaluation
 
@@ -693,8 +708,9 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                         // messages from FTY_PROTO_STREAM_METRICS are regular metrics
                         flexible_alert_handle_metric (self, &fmsg);
                     } else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
-                        // messages from FTY_PROTO_STREAM_METRICS_SENSORS are gpio sensors
-                        flexible_alert_handle_metric_sensor (self, &fmsg);
+                        // messages from FTY_PROTO_STREAM_METRICS_SENSORS are gpi sensors
+                        if (is_gpi_metric (fmsg))
+                            flexible_alert_handle_metric_sensor (self, &fmsg);
                     } else {
                         zsys_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
                     }
