@@ -263,7 +263,7 @@ is_gpi_metric (fty_proto_t* metric)
 
 
 //  --------------------------------------------------------------------------
-//  Function handles infoming metrics, drives lua evaluation
+//  Function handles incoming metrics, drives lua evaluation
 
 void
 flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
