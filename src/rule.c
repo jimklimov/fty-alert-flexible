@@ -37,6 +37,7 @@
 struct _rule_t {
     char *name;
     char *description;
+    char *logical_asset;
     zlist_t *metrics;
     zlist_t *assets;
     zlist_t *groups;
@@ -133,6 +134,10 @@ rule_json_callback (const char *locator, const char *value, void *data)
     else if (streq (mylocator, "description")) {
         zstr_free (&self -> description);
         self -> description = vsjson_decode_string (value);
+    }
+    else if (streq (mylocator, "logical_asset")) {
+        zstr_free (&self -> logical_asset);
+        self -> logical_asset = vsjson_decode_string (value);
     }
     else if (strncmp (mylocator, "metrics/", 7) == 0) {
         char *metric = vsjson_decode_string (value);
@@ -580,6 +585,13 @@ rule_json (rule_t *self)
         zstr_free (&desc);
     }
     {
+        char *logical_asset = vsjson_encode_string (self->logical_asset ? self->logical_asset : "");
+        s_string_append (&json, &jsonsize, "\"logical_asset\":");
+        s_string_append (&json, &jsonsize, logical_asset);
+        s_string_append (&json, &jsonsize, ",\n");
+        zstr_free (&logical_asset);
+    }
+    {
         //metrics
         char *tmp = s_zlist_to_json_array (self->metrics);
         s_string_append (&json, &jsonsize, "\"metrics\":");
@@ -681,6 +693,7 @@ rule_destroy (rule_t **self_p)
         //  Free class properties here
         zstr_free (&self->name);
         zstr_free (&self->description);
+        zstr_free (&self->logical_asset);
         zstr_free (&self->evaluation);
         if (self->lua) lua_close (self->lua);
         zlist_destroy (&self->metrics);
