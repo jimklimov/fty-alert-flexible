@@ -497,6 +497,8 @@ rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ena
             const char *msg = lua_tostring (self->lua, -1);
             if (msg) *message = strdup (msg);
         }
+        else
+            zsys_debug ("rule_evaluate: invalid content of self->lua.");
         lua_pop (self->lua, 2);
     }
 }
