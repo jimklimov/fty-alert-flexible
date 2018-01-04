@@ -32,7 +32,7 @@
 #define ENDPOINT        "ipc://@/malamute"
 #define RULES_DIR        "./rules"
 #define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
-#define METRICS_PATTERN "*.";
+#define METRICS_PATTERN ".*";
 
 
 static const char*
