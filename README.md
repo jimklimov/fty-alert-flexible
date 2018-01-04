@@ -1,6 +1,8 @@
 # fty-alert-flexible
 
-This 42ITy agent listen for metrics and produces an alerts. Rules
+This 42ITy agent listen for metrics and produces alerts. Pattern 
+subscription about METRICS stream is defined by 'malamute/metrics_pattern' 
+key in fty-alert-flexible.cfg configuration file. Rules
 for creating alerts are specified with json and lua. All rule files
 are loaded from one directory specified by command line parameter.
 File has to have a `.rule` extension. Some example rule files are
