@@ -8,4 +8,5 @@ server
 
 malamute
     endpoint = ipc://@/malamute                     # Malamute endpoint
-    metrics_pattern = .*    # METRICS consumer pattern 
+    metrics_pattern = .*                            # METRICS consumer pattern
+ 
