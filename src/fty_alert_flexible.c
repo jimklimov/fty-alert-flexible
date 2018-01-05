@@ -28,13 +28,30 @@
 
 #include "fty_alert_flexible_classes.h"
 
-static const char *ACTOR_NAME = "fty-alert-flexible";
-static const char *ENDPOINT = "ipc://@/malamute";
-static const char *RULES_DIR = "./rules";
+#define ACTOR_NAME      "fty-alert-flexible"
+#define ENDPOINT        "ipc://@/malamute"
+#define RULES_DIR        "./rules"
+#define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
+#define METRICS_PATTERN ".*";
+
+
+static const char*
+s_get (zconfig_t *config, const char* key, const char*dfl) {
+    assert (config);
+    const char *ret = (const char *)zconfig_get (config, key, dfl);
+    if (!ret || streq (ret, ""))
+        return dfl;
+    return ret;
+}
 
 int main (int argc, char *argv [])
 {
-    bool verbose = false;
+    bool  verbose               = false;
+    const char *endpoint        = ENDPOINT;
+    const char *config_file     = CONFIG;
+    const char *rules           = RULES_DIR;
+    const char *metrics_pattern = METRICS_PATTERN; 
+    
     int argn;
     for (argn = 1; argn < argc; argn++) {
         const char *param = NULL;
@@ -43,21 +60,26 @@ int main (int argc, char *argv [])
         if (streq (argv [argn], "--help")
         ||  streq (argv [argn], "-h")) {
             puts ("fty-alert-flexible [options] ...");
-            puts ("  --verbose / -v         verbose test output");
-            puts ("  --help / -h            this information");
-            puts ("  --endpoint / -e        malamute endpoint [ipc://@/malamute]");
-            puts ("  --rules / -r           directory with rules [./rules]");
+            puts ("  -v|--verbose          verbose test output");
+            puts ("  -h|--help             this information");
+            puts ("  -e|--endpoint         malamute endpoint [ipc://@/malamute]");
+            puts ("  -r|--rules            directory with rules [./rules]");
+            puts ("  -c|--config           path to config file[/etc/fty-alert-flexible/fty-alert-flexible.cfg]\n");
             return 0;
         }
         else if (streq (argv [argn], "--verbose") || streq (argv [argn], "-v")) {
             verbose = true;
         }
         else if (streq (argv [argn], "--endpoint") || streq (argv [argn], "-e")) {
-            if (param) ENDPOINT = param;
+            if (param) endpoint = param;
             ++argn;
         }
         else if (streq (argv [argn], "--rules") || streq (argv [argn], "-r")) {
-            if (param) RULES_DIR = param;
+            if (param) rules = param;
+            ++argn;
+        }
+        else if (streq (argv [argn], "--config") || streq (argv [argn], "-c")) {
+            if (param) config_file = param;
             ++argn;
         }
         else {
@@ -65,14 +87,31 @@ int main (int argc, char *argv [])
             return 1;
         }
     }
-    //  Insert main code here
+    //parse config file
+    zconfig_t *config = zconfig_load(config_file);
+    if (config) {
+        // verbose
+        if (streq (zconfig_get (config, "server/verbose", (verbose?"1":"0")), "1")) {
+            verbose = true;
+        }
+        //rules
+        rules = s_get (config, "server/rules", rules);
+        // endpoint
+        endpoint = s_get (config, "malamute/endpoint", endpoint);
+        //metrics_pattern
+        metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
+                
+    }else{
+        zsys_error ("Failed to load config file %s",config_file);
+    }
     if (verbose)
         zsys_info ("fty_alert_flexible - started");
+    //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
     assert (server);
-    zstr_sendx (server, "BIND", ENDPOINT, ACTOR_NAME, NULL);
+    zstr_sendx (server, "BIND", endpoint, ACTOR_NAME, NULL);
     zstr_sendx (server, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
-    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
+    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, metrics_pattern, NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (server, "LOADRULES", RULES_DIR, NULL);
