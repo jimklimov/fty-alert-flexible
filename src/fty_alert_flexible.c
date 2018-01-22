@@ -48,8 +48,10 @@ int main (int argc, char *argv [])
 {
     bool  verbose               = false;
     const char *endpoint        = ENDPOINT;
+    bool isCmdEndpoint           = false;
     const char *config_file     = CONFIG;
     const char *rules           = RULES_DIR;
+    bool isCmdRules              = false;
     const char *metrics_pattern = METRICS_PATTERN; 
     
     int argn;
@@ -71,11 +73,17 @@ int main (int argc, char *argv [])
             verbose = true;
         }
         else if (streq (argv [argn], "--endpoint") || streq (argv [argn], "-e")) {
-            if (param) endpoint = param;
+            if (param) {
+                endpoint = param;
+                isCmdEndpoint = true;
+            }
             ++argn;
         }
         else if (streq (argv [argn], "--rules") || streq (argv [argn], "-r")) {
-            if (param) rules = param;
+            if (param) {
+                rules = param;
+                isCmdRules = true;
+            }
             ++argn;
         }
         else if (streq (argv [argn], "--config") || streq (argv [argn], "-c")) {
@@ -95,9 +103,15 @@ int main (int argc, char *argv [])
             verbose = true;
         }
         //rules
-        rules = s_get (config, "server/rules", rules);
+        if (!isCmdRules){
+            rules = s_get (config, "server/rules", rules);
+        }
+        
         // endpoint
-        endpoint = s_get (config, "malamute/endpoint", endpoint);
+        if (!isCmdEndpoint){
+            endpoint = s_get (config, "malamute/endpoint", endpoint);
+        }
+        
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
                 
@@ -114,7 +128,7 @@ int main (int argc, char *argv [])
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, metrics_pattern, NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (server, "LOADRULES", RULES_DIR, NULL);
+    zstr_sendx (server, "LOADRULES", rules, NULL);
     if (verbose)
         zstr_sendx (server, "VERBOSE", NULL);
 
