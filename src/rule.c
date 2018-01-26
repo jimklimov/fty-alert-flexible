@@ -172,11 +172,17 @@ rule_json_callback (const char *locator, const char *value, void *data)
         zstr_free (&type);
     }
     else if (strncmp (mylocator, "results/", 8) == 0) {
+        const char *end = strrchr (mylocator, '/') + 1;
+        const char *prev = end - strlen ("action/");
+        // OLD FORMAT:
+        // results/high_critical/action/0
+        if (*end >= '0' && *end <= '9' && strncmp (prev, "action", strlen("action")) == 0)
+            self->parser.action = vsjson_decode_string (value);
+        // NEW FORMAT:
         // results/high_critical/action/0/action
         // results/high_critical/action/0/asset for action == "GPO_INTERACTION"
         // results/high_critical/action/0/mode  ditto
-        const char *end = strrchr (mylocator, '/') + 1;
-        if (streq (end, "action"))
+        else if (streq (end, "action"))
             self->parser.action = vsjson_decode_string (value);
         else if (streq (end, "asset"))
             self->parser.act_asset = vsjson_decode_string (value);
@@ -818,6 +824,48 @@ vsjson_test (bool verbose)
     printf (" * vsjson: skip\n");
 }
 
+void json_rule_test(const char *dir, const char *basename)
+{
+    rule_t *self = rule_new ();
+    assert (self);
+    char *rule_file = zsys_sprintf ("%s/rules/%s.rule", dir, basename);
+    char *json_file = zsys_sprintf ("%s/rules/%s.json", dir, basename);
+    assert (rule_file && json_file);
+    rule_load (self, rule_file);
+    zstr_free (&rule_file);
+    FILE *f;
+    char *stock_json;
+    assert (f = fopen (json_file, "r"));
+    assert (stock_json = (char *)calloc (1, 4096));
+    assert (fread (stock_json, 1, 4096, f));
+    fclose (f);
+    zstr_free (&json_file);
+    // test rule to json
+    char *json = rule_json (self);
+    // XXX: This is fragile, as we require the json to be bit-identical.
+    // If you get an error here, manually review the actual difference.
+    // In particular, the hash order is not stable
+    if (!streq (json, stock_json)) {
+        fprintf (stderr, "Generated json is different\nEXPECTED:\n%sGOT:\n%s",
+                stock_json, json);
+        abort ();
+    }
+    zstr_free (&stock_json);
+    rule_t *rule = rule_new ();
+    rule_parse (rule, json);
+    char *json2 = rule_json (rule);
+    assert (streq (rule_name(rule), rule_name (self)));
+    if (!streq (json, json2)) {
+        fprintf (stderr, "Generated json differs after second pass\nEXPECTED:\n%sGOT:\n%s",
+                json, json2);
+        abort ();
+    }
+    rule_destroy (&rule);
+    zstr_free (&json);
+    zstr_free (&json2);
+    rule_destroy (&self);
+}
+
 void
 rule_test (bool verbose)
 {
@@ -898,49 +946,13 @@ rule_test (bool verbose)
         printf ("      OK\n");
     }
 
-    //  Load test #3 - json construction test
-    {
-        printf ("      Load test #3 - json construction test ... ");
-        rule_t *self = rule_new ();
-        assert (self);
-        rule_file = zsys_sprintf ("%s/rules/%s", SELFTEST_DIR_RO, "test.rule");
-        char * json_file = zsys_sprintf ("%s/rules/%s", SELFTEST_DIR_RO, "test.json");
-        assert (rule_file && json_file);
-        rule_load (self, rule_file);
-        zstr_free (&rule_file);
-        FILE *f;
-        char *stock_json;
-        assert (f = fopen (json_file, "r"));
-        assert (stock_json = (char *)calloc (1, 4096));
-        assert (fread (stock_json, 1, 4096, f));
-        fclose (f);
-        zstr_free (&json_file);
-        // test rule to json
-        char *json = rule_json (self);
-        // XXX: This is fragile, as we require the json to be bit-identical.
-        // If you get an error here, manually review the actual difference.
-        // In particular, the hash order is not stable
-        if (!streq (json, stock_json)) {
-            printf ("Generated json is different\nEXPECTED:\n%sGOT:\n%s",
-                    stock_json, json);
-            abort ();
-        }
-        zstr_free (&stock_json);
-        rule_t *rule = rule_new ();
-        rule_parse (rule, json);
-        char *json2 = rule_json (rule);
-        assert (streq (rule_name(rule), rule_name (self)));
-        if (!streq (json, json2)) {
-            printf ("Generated json differs after second pass\nEXPECTED:\n%sGOT:\n%s",
-                    json, json2);
-            abort ();
-        }
-        rule_destroy (&rule);
-        zstr_free (&json);
-        zstr_free (&json2);
-        rule_destroy (&self);
-        printf ("      OK\n");
-    }
+    printf ("      Load test #3 - json construction test ... ");
+    json_rule_test (SELFTEST_DIR_RO, "test");
+    printf ("      OK\n");
+
+    printf ("      Load test #4 - old json format ... ");
+    json_rule_test (SELFTEST_DIR_RO, "old");
+    printf ("      OK\n");
     //  @end
     printf ("OK\n");
 }
