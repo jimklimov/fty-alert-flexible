@@ -18,4 +18,9 @@ Installation model
     <item path = "/usr/share/fty-alert-flexible/rules" name = "../src/selftest-ro/rules/load.rule" />
     <item path = "/usr/share/fty-alert-flexible/rules" name = "../src/selftest-ro/rules/ups.rule" />
     <item path = "/usr/share/fty-alert-flexible/rules" name = "../src/selftest-ro/rules/threshold.rule" />
+
+    <!-- Note: /bios/ pathname is correct here until replaced in favor of /fty/
+         EVERYWHERE in ecosystem at once; otherwise packaging is confused -->
+    <!-- Import of configuration data stored in IPM_Infra-1.2.0 format -->
+    <item path = "/usr/share/bios/setup" name = "50-fty-alert-flexible-import-into-1.3.0.sh" />
 </install>

@@ -1,0 +1,6 @@
+# Install setup scriptlet into /usr/share/bios/setup
+setupscriptletdir = $(datadir)/bios/setup
+setupscriptlet_SCRIPTS = \
+    50-fty-alert-flexible-import-into-1.3.0.sh
+
+EXTRA_DIST += 50-fty-alert-flexible-import-into-1.3.0.sh

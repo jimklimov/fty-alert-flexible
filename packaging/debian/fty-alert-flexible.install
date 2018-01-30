@@ -1,4 +1,6 @@
+### NOTE: This file was edited to add /usr/share/bios/setup/* scriptlet
 usr/bin/fty-alert-flexible
+usr/share/bios/setup/50-fty-alert-flexible-import-into-1.3.0.sh
 etc/fty-alert-flexible/fty-alert-flexible.cfg
 lib/systemd/system/fty-alert-flexible.service
 

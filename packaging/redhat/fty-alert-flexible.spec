@@ -1,3 +1,4 @@
+### NOTE: This file was edited to add /usr/share/bios/setup/* scriptlet
 #
 #    fty-alert-flexible - agent for creating evaluating alerts
 #
@@ -119,6 +120,7 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %doc README.md
 %{_bindir}/fty-alert-flexible
 %{_mandir}/man1/fty-alert-flexible*
+%{_datadir}/bios/setup/50-fty-alert-flexible-import-into-1.3.0.sh
 %config(noreplace) %{_sysconfdir}/fty-alert-flexible/fty-alert-flexible.cfg
 %{SYSTEMD_UNIT_DIR}/fty-alert-flexible.service
 %dir %{_sysconfdir}/fty-alert-flexible
