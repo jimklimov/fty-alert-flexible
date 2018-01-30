@@ -52,6 +52,9 @@ if [ "`ls -1 "$GENERATED_RULES_DIR"/*.rule | wc -l`" = 0 ] ; then
 fi
 
 for F in "$GENERATED_RULES_DIR"/*.rule ; do
+    [ -s "$F" ] || { echo "SKIP FILE: $F : is empty or missing" ; continue; }
+    [ -s "$F.bak-import-pre-1.3.0" ] && { echo "SKIP FILE: $F : was already processed earlier" ; continue; }
+
     cp -f "$F" "$F.bak-import-pre-1.3.0" \
     || die "FAILED to copy '$F' into backup '$F.bak-import-pre-1.3.0'"
 
