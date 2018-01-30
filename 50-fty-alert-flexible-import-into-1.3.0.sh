@@ -36,6 +36,9 @@
 #STATIC_RULES_DIR="/usr/share/fty-alert-flexible/rules"
 GENERATED_RULES_DIR="/var/lib/fty/fty-alert-flexible/rules"
 
+### Extension for the backup files made by this format-version bumper
+BACKUPEXT="bak-import-pre-1.3.0"
+
 die() {
     echo "FATAL: $*" >&2
     exit 1
@@ -53,14 +56,15 @@ fi
 
 for F in "$GENERATED_RULES_DIR"/*.rule ; do
     [ -s "$F" ] || { echo "SKIP FILE: $F : is empty or missing" ; continue; }
-    [ -s "$F.bak-import-pre-1.3.0" ] && { echo "SKIP FILE: $F : was already processed earlier" ; continue; }
+    [ -s "$F.$BACKUPEXT" ] && { echo "SKIP FILE: $F : was already processed earlier" ; continue; }
 
-    cp -f "$F" "$F.bak-import-pre-1.3.0" \
-    || die "FAILED to copy '$F' into backup '$F.bak-import-pre-1.3.0'"
+    cp -f "$F" "$F.$BACKUPEXT" \
+    || die "FAILED to copy '$F' into backup '$F.$BACKUPEXT'"
+
 
     sed -r \
         -e 's/"action" *: *\[ *"([^"]*)" *\]/"action": \[\{"action": "\1"\}\]/' \
         -e 's/"action" *: *\[ *"([^"]*)", *"([^"]*)" *\]/"action": \[\{"action": "\1"\}, {"action": "\2"}\]/' \
-        < "$F.bak-import-pre-1.3.0" > "$F" \
+        < "$F.$BACKUPEXT" > "$F" \
     || die "FAILED to convert '$F' from 1.2.0 format into 1.3.0"
 done
