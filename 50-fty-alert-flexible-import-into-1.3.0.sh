@@ -61,6 +61,8 @@ for F in "$GENERATED_RULES_DIR"/*.rule ; do
     cp -f "$F" "$F.$BACKUPEXT" \
     || die "FAILED to copy '$F' into backup '$F.$BACKUPEXT'"
 
+    chmod --reference="$F" "$F.$BACKUPEXT"
+    chown --reference="$F" "$F.$BACKUPEXT"
 
     sed -r \
         -e 's/"action" *: *\[ *"([^"]*)" *\]/"action": \[\{"action": "\1"\}\]/' \
