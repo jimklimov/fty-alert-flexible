@@ -2,6 +2,7 @@
     fty_alert_flexible_classes - private header file
 
     Copyright (C) 2016 - 2017 Tomas Halman
+    Copyright (C) 2017 - 2018 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,7 +75,7 @@ FTY_ALERT_FLEXIBLE_PRIVATE void
 
 //  Self test for private classes
 FTY_ALERT_FLEXIBLE_PRIVATE void
-    fty_alert_flexible_private_selftest (bool verbose);
+    fty_alert_flexible_private_selftest (bool verbose, const char *subtest);
 
 #endif // FTY_ALERT_FLEXIBLE_BUILD_DRAFT_API
 
