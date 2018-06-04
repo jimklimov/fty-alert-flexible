@@ -5,6 +5,7 @@
 
     -------------------------------------------------------------------------
     Copyright (C) 2016 - 2017 Tomas Halman
+    Copyright (C) 2017 - 2018 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,12 +36,15 @@
 //
 
 void
-fty_alert_flexible_private_selftest (bool verbose)
+fty_alert_flexible_private_selftest (bool verbose, const char *subtest)
 {
 // Tests for stable private classes:
-    rule_test (verbose);
-    vsjson_test (verbose);
-    metrics_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "rule_test"))
+        rule_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "vsjson_test"))
+        vsjson_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "metrics_test"))
+        metrics_test (verbose);
 }
 /*
 ################################################################################

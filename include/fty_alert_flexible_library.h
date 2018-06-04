@@ -2,6 +2,7 @@
     fty-alert-flexible - generated layer of public API
 
     Copyright (C) 2016 - 2017 Tomas Halman
+    Copyright (C) 2017 - 2018 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,11 +65,12 @@
 #   define FTY_ALERT_FLEXIBLE_EXPORT
 #   define FTY_ALERT_FLEXIBLE_PRIVATE
 #else
-#   define FTY_ALERT_FLEXIBLE_EXPORT
 #   if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
 #       define FTY_ALERT_FLEXIBLE_PRIVATE __attribute__ ((visibility ("hidden")))
+#       define FTY_ALERT_FLEXIBLE_EXPORT __attribute__ ((visibility ("default")))
 #   else
 #       define FTY_ALERT_FLEXIBLE_PRIVATE
+#       define FTY_ALERT_FLEXIBLE_EXPORT
 #   endif
 #endif
 
@@ -82,9 +84,18 @@ typedef struct _flexible_alert_t flexible_alert_t;
 #include "flexible_alert.h"
 
 #ifdef FTY_ALERT_FLEXIBLE_BUILD_DRAFT_API
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //  Self test for private classes
 FTY_ALERT_FLEXIBLE_EXPORT void
-    fty_alert_flexible_private_selftest (bool verbose);
+    fty_alert_flexible_private_selftest (bool verbose, const char *subtest);
+
+#ifdef __cplusplus
+}
+#endif
 #endif // FTY_ALERT_FLEXIBLE_BUILD_DRAFT_API
 
 #endif
