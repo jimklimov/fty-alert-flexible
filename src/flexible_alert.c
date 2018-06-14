@@ -165,13 +165,16 @@ flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *ass
     // topic
     char *topic = zsys_sprintf ("%s/%s@%s", rule_name (rule), severity, asset);
 
+    // Logical asset if specified
+    const char *la = rule_logical_asset (rule);
+
     // message
     zmsg_t *alert = fty_proto_encode_alert (
         NULL,
         time(NULL),
         ttl,
         rule_name (rule),
-        asset,
+        la ? la : asset,
         result == 0 ? "RESOLVED" : "ACTIVE",
         severity,
         message,
