@@ -156,26 +156,26 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
 }
 
 void
-flexible_alert_send_alert (flexible_alert_t *self, const char *rulename, zlist_t *actions, const char *asset, int result, const char *message, int ttl)
+flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *asset, int result, const char *message, int ttl)
 {
     char *severity = "OK";
     if (result == -1 || result == 1) severity = "WARNING";
     if (result == -2 || result == 2) severity = "CRITICAL";
 
     // topic
-    char *topic = zsys_sprintf ("%s/%s@%s", rulename, severity, asset);
+    char *topic = zsys_sprintf ("%s/%s@%s", rule_name (rule), severity, asset);
 
     // message
     zmsg_t *alert = fty_proto_encode_alert (
         NULL,
         time(NULL),
         ttl,
-        rulename,
+        rule_name (rule),
         asset,
         result == 0 ? "RESOLVED" : "ACTIVE",
         severity,
         message,
-        actions); // action list
+        rule_result_actions(rule, result)); // action list
 
     mlm_client_send (self -> mlm, topic, &alert);
 
@@ -219,8 +219,7 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
     if (result != RULE_ERROR);
     flexible_alert_send_alert (
         self,
-        rule_name (rule),
-        rule_result_actions (rule, result),
+        rule,
         assetname,
         result,
         message, ttl * 5 / 2
@@ -279,7 +278,6 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
 
     const char *assetname = fty_proto_name (ftymsg);
     const char *quantity = fty_proto_type (ftymsg);
-    const char *description = fty_proto_aux_string (ftymsg, "description", "");
     const char *ename = (const char *) zhash_lookup (self->enames, assetname);
     const char *extport = fty_proto_aux_string (ftymsg, "ext-port", NULL);
     char * qty_dup = (char *)quantity;
@@ -296,25 +294,6 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
         qty_dup = strndup(quantity, qty_len_helper - quantity);
     }
 
-    // produce nagios style alerts
-    if (strncmp (quantity, "nagios.", 7) == 0 && strlen (description)) {
-        int ivalue = atoi (fty_proto_value (ftymsg));
-        if (ivalue >=0 && ivalue <=2) {
-            flexible_alert_send_alert (
-                self,
-                quantity,
-                NULL,
-                fty_proto_name (ftymsg),
-                ivalue,
-                description,
-                fty_proto_ttl (ftymsg)
-            );
-            if (extport) {
-                free(qty_dup);
-            }
-            return;
-        }
-    }
     zlist_t *functions_for_asset = (zlist_t *) zhash_lookup (self->assets, assetname);
     if (! functions_for_asset) {
         if (extport) {
