@@ -291,7 +291,7 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
         // second . marks the length
         while ((*qty_len_helper != '\0') && (*qty_len_helper != '.')) ++qty_len_helper;
         ++qty_len_helper;
-        if (qty_len_helper == '\0') return; // malformed quantity
+        if (*qty_len_helper == '\0') return; // malformed quantity
         while ((*qty_len_helper != '\0') && (*qty_len_helper != '.')) ++qty_len_helper;
         qty_dup = strndup(quantity, qty_len_helper - quantity);
     }
