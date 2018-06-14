@@ -59,6 +59,10 @@ FTY_ALERT_FLEXIBLE_PRIVATE int
 FTY_ALERT_FLEXIBLE_PRIVATE const char *
     rule_name (rule_t *self);
 
+//  Get the logical asset
+FTY_ALERT_FLEXIBLE_PRIVATE const char *
+    rule_logical_asset (rule_t *self);
+
 //  Does rule contain this asset name?
 FTY_ALERT_FLEXIBLE_PRIVATE bool
     rule_asset_exists (rule_t *self, const char *asset);
