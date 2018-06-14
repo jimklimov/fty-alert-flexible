@@ -267,6 +267,16 @@ rule_name (rule_t *self)
 
 
 //  --------------------------------------------------------------------------
+//  Get the logical asset
+
+const char *
+rule_logical_asset (rule_t *self)
+{
+    assert (self);
+    return self->logical_asset;
+}
+
+//  --------------------------------------------------------------------------
 //  Does rule contain this asset name?
 
 bool
