@@ -443,7 +443,8 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
     const char *operation = fty_proto_operation (ftymsg);
     const char *assetname = fty_proto_name (ftymsg);
 
-    if (streq (operation, "delete")) {
+    if (streq (operation, FTY_PROTO_ASSET_OP_DELETE) ||
+            !streq(fty_proto_aux_string (ftymsg, FTY_PROTO_ASSET_STATUS, "active"), "active")) {
         if (zhash_lookup (self->assets, assetname)) {
             zhash_delete (self->assets, assetname);
         }
@@ -452,7 +453,8 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         }
         return;
     }
-    if (streq (operation, "update") || streq (operation, "inventory")) {
+    if (streq (operation, FTY_PROTO_ASSET_OP_UPDATE) || 
+            streq (operation, FTY_PROTO_ASSET_OP_INVENTORY)) {
         zlist_t *functions_for_asset = zlist_new ();
         zlist_autofree (functions_for_asset);
 
