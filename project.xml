@@ -50,6 +50,23 @@
 
     <use project = "lua-5.1" />
 
+    <use project = "fty-common-logging" libname = "libfty_common_logging" header="fty-log/fty_logger.h"
+        repository = "https://github.com/42ity/fty-common-logging.git"
+        release = "master"
+        test = "fty_log_selftest" >
+
+        <use project = "log4cplus" header = "log4cplus/logger.h" test = "appender_test"
+            repository = "https://github.com/42ity/log4cplus.git"
+            release = "1.1.2-FTY-master"
+            />
+
+        <use project = "cxxtools" test="cxxtools::Utf8Codec::Utf8Codec" header="cxxtools/allocator.h"
+            repository = "https://github.com/42ity/cxxtools.git"
+            release = "2.2-FTY-master"
+            />
+    </use>
+
+
     <class name = "rule" private = "1">class representing one rule</class>
     <class name = "vsjson" private = "1">JSON parser</class>
     <class name = "metrics" private = "1">List of metrics</class>
