@@ -52,8 +52,8 @@ int main (int argc, char *argv [])
     const char *config_file     = CONFIG;
     const char *rules           = RULES_DIR;
     bool isCmdRules              = false;
-    const char *metrics_pattern = METRICS_PATTERN; 
-    
+    const char *metrics_pattern = METRICS_PATTERN;
+
     int argn;
     for (argn = 1; argn < argc; argn++) {
         const char *param = NULL;
@@ -95,6 +95,7 @@ int main (int argc, char *argv [])
             return 1;
         }
     }
+    ftylog_setInstance ("fty-alert-flexible", "/etc/fty/ftylog.cfg");
     //parse config file
     zconfig_t *config = zconfig_load(config_file);
     if (config) {
@@ -106,20 +107,20 @@ int main (int argc, char *argv [])
         if (!isCmdRules){
             rules = s_get (config, "server/rules", rules);
         }
-        
+
         // endpoint
         if (!isCmdEndpoint){
             endpoint = s_get (config, "malamute/endpoint", endpoint);
         }
-        
+
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
-                
+
     }else{
-        zsys_error ("Failed to load config file %s",config_file);
+        log_error ("Failed to load config file %s",config_file);
     }
     if (verbose)
-        zsys_info ("fty_alert_flexible - started");
+        log_info ("fty_alert_flexible - started");
     //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
     assert (server);
@@ -138,7 +139,7 @@ int main (int argc, char *argv [])
     }
     zactor_destroy (&server);
     if (verbose)
-        zsys_info ("fty_alert_flexible - exited");
+        log_info ("fty_alert_flexible - exited");
 
     return 0;
 }

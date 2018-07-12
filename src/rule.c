@@ -200,7 +200,7 @@ rule_json_callback (const char *locator, const char *value, void *data)
         const char *start = mylocator + strlen("results/");
         const char *slash = strchr(start, '/');
         if (!slash) {
-            zsys_error ("malformed json: %s", mylocator);
+            log_error ("malformed json: %s", mylocator);
             zstr_free (&self->parser.action);
             zstr_free (&self->parser.act_asset);
             zstr_free (&self->parser.act_mode);
@@ -418,7 +418,7 @@ int rule_load (rule_t *self, const char *path)
 
     struct stat rstat;
     if (fstat (fd, &rstat) != 0) {
-        zsys_error ("can't stat file %s", path);
+        log_error ("can't stat file %s", path);
     }
 
     int capacity = rstat.st_size + 1;
@@ -426,7 +426,7 @@ int rule_load (rule_t *self, const char *path)
     assert (buffer);
 
     if (read (fd, buffer, capacity) == -1) {
-        zsys_error ("Error while reading rule %s", path);
+        log_error ("Error while reading rule %s", path);
     }
     close (fd);
     int result = rule_parse (self, buffer);
@@ -456,7 +456,7 @@ int rule_save (rule_t *self, const char *path)
     char *json = rule_json (self);
     if (! json) return -2;
     if (write (fd, json, strlen(json)) == -1) {
-        zsys_error ("Error while writting rule %s", path);
+        log_error ("Error while writting rule %s", path);
         zstr_free (&json);
         return -3;
     }
@@ -482,14 +482,14 @@ static int rule_compile (rule_t *self)
     if (!self->lua) return 0;
     luaL_openlibs(self -> lua); // get functions like print();
     if (luaL_dostring (self -> lua, self -> evaluation) != 0) {
-        zsys_error ("rule %s has an error", self -> name);
+        log_error ("rule %s has an error", self -> name);
         lua_close (self -> lua);
         self -> lua = NULL;
         return 0;
     }
     lua_getglobal (self -> lua, "main");
     if (!lua_isfunction (self -> lua, -1)) {
-        zsys_error ("main function not found in rule %s", self -> name);
+        log_error ("main function not found in rule %s", self -> name);
         lua_close (self->lua);
         self -> lua = NULL;
         return 0;
@@ -559,7 +559,7 @@ rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ena
             if (msg) *message = strdup (msg);
         }
         else
-            zsys_debug ("rule_evaluate: invalid content of self->lua.");
+            log_debug ("rule_evaluate: invalid content of self->lua.");
         lua_pop (self->lua, 2);
     }
 }
@@ -634,7 +634,7 @@ static char * s_actions_to_json_array (zlist_t *actions)
         if (!colon) {
             // EMAIL or SMS
             if (!streq(item, "EMAIL") && !streq(item, "SMS"))
-                zsys_warning ("Unrecognized action: %s", item);
+                log_warning ("Unrecognized action: %s", item);
             char *encoded = vsjson_encode_string(item);
             s_string_append (&json, &jsonsize, encoded);
             zstr_free (&encoded);
@@ -642,14 +642,14 @@ static char * s_actions_to_json_array (zlist_t *actions)
             // GPO_INTERACTION
             char *encoded = NULL;
             if (strncmp (item, "GPO_INTERACTION", colon - p) != 0)
-                zsys_warning ("Unrecognized action: %.*s", colon - p, p);
+                log_warning ("Unrecognized action: %.*s", colon - p, p);
             encoded = vsjson_encode_nstring(p, colon - p);
             s_string_append (&json, &jsonsize, encoded);
             zstr_free (&encoded);
             s_string_append (&json, &jsonsize, ", \"asset\": ");
             p = colon + 1;
             if (!(colon = strchr (p, ':'))) {
-                zsys_warning ("Missing mode field in \"%s\"", item);
+                log_warning ("Missing mode field in \"%s\"", item);
                 colon = p + strlen(p);
             }
             encoded = vsjson_encode_nstring(p, colon - p);

@@ -115,11 +115,11 @@ flexible_alert_load_one_rule (flexible_alert_t *self, const char *fullpath)
 {
     rule_t *rule = rule_new();
     if (rule_load (rule, fullpath) == 0) {
-        zsys_debug ("rule %s loaded", fullpath);
+        log_debug ("rule %s loaded", fullpath);
         zhash_update (self->rules, rule_name (rule), rule);
         zhash_freefn (self->rules, rule_name (rule), rule_freefn);
     } else {
-        zsys_error ("failed to load rule '%s'", fullpath);
+        log_error ("failed to load rule '%s'", fullpath);
         rule_destroy (&rule);
     }
 }
@@ -135,16 +135,16 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
 
     DIR *dir = opendir(path);
     if (!dir) {
-        zsys_error ("cannot open rule dir '%s'", path);
+        log_error ("cannot open rule dir '%s'", path);
         return;
     }
     struct dirent * entry;
     while ((entry = readdir(dir)) != NULL) {
-        zsys_debug ("checking dir entry %s type %i", entry -> d_name, entry -> d_type);
+        log_debug ("checking dir entry %s type %i", entry -> d_name, entry -> d_type);
         if (entry -> d_type == DT_LNK || entry -> d_type == DT_REG || entry -> d_type == 0) {
             // file or link
             int l = strlen (entry -> d_name);
-            zsys_debug ("loading rule file: %s", entry -> d_name);
+            log_debug ("loading rule file: %s", entry -> d_name);
             if ( l > 5 && streq (&(entry -> d_name[l - 5]), ".rule")) {
                 // json file
                 snprintf (fullpath, PATH_MAX, "%s/%s", path, entry -> d_name);
@@ -203,7 +203,7 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
         if (!ftymsg) {
             // some metrics are missing
             zlist_destroy (&params);
-            zsys_debug ("missing metric %s", topic);
+            log_debug ("missing metric %s", topic);
             zstr_free (&topic);
             return;
         }
@@ -339,7 +339,7 @@ ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
     if (!zhash_lookup (self->assets, sensor_name))
     {
         if (self->verbose)
-            zsys_info ("I have to ask for sensor  %s", sensor_name);
+            log_info ("I have to ask for sensor  %s", sensor_name);
 
         zmsg_t *msg = zmsg_new ();
         zmsg_addstr (msg, "REPUBLISH");
@@ -348,13 +348,13 @@ ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
         int rv = mlm_client_sendto (self->mlm, "asset-agent", "REPUBLISH" , NULL, 5000, &msg);
         if (rv != 0)
         {
-            zsys_error ("mlm_client_sendto (address = '%s', subject = '%s', timeout = '5000') for '%s' failed.",
+            log_error ("mlm_client_sendto (address = '%s', subject = '%s', timeout = '5000') for '%s' failed.",
                         "asset-agent", "REPUBLISH", sensor_name);
         }
         return rv;
     }
     if (self->verbose)
-        zsys_info ("I know this sensor %s", sensor_name);
+        log_info ("I know this sensor %s", sensor_name);
     return 0;
 }
 
@@ -371,7 +371,7 @@ flexible_alert_handle_metric_sensor (flexible_alert_t *self, fty_proto_t **ftyms
     // get name of asset based on GPIO port
     const char *sensor_name = fty_proto_aux_string (ftymsg, FTY_PROTO_METRICS_SENSOR_AUX_SNAME, NULL);
     if (!sensor_name) {
-        zsys_debug ("No sensor name provided in sensor message");
+        log_debug ("No sensor name provided in sensor message");
         return;
     }
 
@@ -462,12 +462,12 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         while (rule) {
             if (is_rule_for_this_asset (rule, ftymsg)) {
                 zlist_append (functions_for_asset, (char *)rule_name (rule));
-                zsys_debug ("rule '%s' is valid for '%s'", rule_name (rule), assetname);
+                log_debug ("rule '%s' is valid for '%s'", rule_name (rule), assetname);
             }
             rule = (rule_t *)zhash_next (self->rules);
         }
         if (! zlist_size (functions_for_asset)) {
-            zsys_debug ("no rule for %s", assetname);
+            log_debug ("no rule for %s", assetname);
             zhash_delete (self->assets, assetname);
             zlist_destroy (&functions_for_asset);
             return;
@@ -559,7 +559,7 @@ flexible_alert_delete_rule (flexible_alert_t *self, const char *name, const char
             zmsg_addstr (reply, "OK");
             zhash_delete (self->rules, name);
         } else {
-            zsys_error ("Can't remove %s", path);
+            log_error ("Can't remove %s", path);
             zmsg_addstr (reply, "ERROR");
             zmsg_addstr (reply, "CAN_NOT_REMOVE");
         }
@@ -590,33 +590,33 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
     rule_t *oldrule = (rule_t *) zhash_lookup (self->rules, rule_name (newrule));
     // we probably shouldn't merge other rules
     if (incomplete && oldrule && strstr (rule_name (oldrule), "sensorgpio")) {
-        zsys_info ("merging incomplete rule %s from fty-alert-engine",
+        log_info ("merging incomplete rule %s from fty-alert-engine",
                 rule_name (newrule));
         rule_merge (oldrule, newrule);
     }
     if (old_name) {
-        zsys_info ("deleting rule %s", old_name);
+        log_info ("deleting rule %s", old_name);
         zmsg_t *msg = flexible_alert_delete_rule (self, old_name, dir);
         zmsg_destroy (&msg);
     }
     rule_t *rule = (rule_t *) zhash_lookup (self->rules, rule_name (newrule));
     if (rule && strstr (rule_name (rule), "sensorgpio") == NULL) {
-        zsys_error ("Rule %s exists", rule_name (rule));
+        log_error ("Rule %s exists", rule_name (rule));
         zmsg_addstr (reply, "ERROR");
         zmsg_addstr (reply, "ALREADY_EXISTS");
     } else {
         char *path = zsys_sprintf ("%s/%s.rule", dir, rule_name(newrule));
         int x = rule_save (newrule, path);
         if ( x != 0) {
-            zsys_error ("Error while saving rule %s (%i)", path, x);
+            log_error ("Error while saving rule %s (%i)", path, x);
             zmsg_addstr (reply, "ERROR");
             zmsg_addstr (reply, "SAVE_FAILURE");
         } else {
             zmsg_addstr (reply, "OK");
             zmsg_addstr (reply, json);
-            zsys_info ("Loading rule %s", path);
+            log_info ("Loading rule %s", path);
             flexible_alert_load_one_rule (self, path);
-            zsys_info ("Loading rule %s done", path);
+            log_info ("Loading rule %s done", path);
         }
         zstr_free (&path);
     }
@@ -680,7 +680,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     self->verbose = true;
                 }
                 else {
-                    zsys_debug ("Unknown command.");
+                    log_debug ("Unknown command.");
                 }
 
                 zstr_free (&cmd);
@@ -704,7 +704,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                         if (is_gpi_metric (fmsg))
                             flexible_alert_handle_metric_sensor (self, &fmsg);
                     } else {
-                        zsys_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
+                        log_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
                     }
                 }
                 fty_proto_destroy (&fmsg);
@@ -758,7 +758,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                         &reply
                     );
                     if (reply) {
-                        zsys_error ("Failed to send LIST reply to %s", mlm_client_sender (self->mlm));
+                        log_error ("Failed to send LIST reply to %s", mlm_client_sender (self->mlm));
                         zmsg_destroy (&reply);
                     }
                 }
