@@ -338,8 +338,7 @@ ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
 
     if (!zhash_lookup (self->assets, sensor_name))
     {
-        if (self->verbose)
-            log_info ("I have to ask for sensor  %s", sensor_name);
+        log_debug ("I have to ask for sensor  %s", sensor_name);
 
         zmsg_t *msg = zmsg_new ();
         zmsg_addstr (msg, "REPUBLISH");
@@ -353,8 +352,7 @@ ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
         }
         return rv;
     }
-    if (self->verbose)
-        log_info ("I know this sensor %s", sensor_name);
+    log_debug ("I know this sensor %s", sensor_name);
     return 0;
 }
 
@@ -453,7 +451,7 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
         }
         return;
     }
-    if (streq (operation, FTY_PROTO_ASSET_OP_UPDATE) || 
+    if (streq (operation, FTY_PROTO_ASSET_OP_UPDATE) ||
             streq (operation, FTY_PROTO_ASSET_OP_INVENTORY)) {
         zlist_t *functions_for_asset = zlist_new ();
         zlist_autofree (functions_for_asset);

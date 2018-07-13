@@ -9,4 +9,6 @@ server
 malamute
     endpoint = ipc://@/malamute                     # Malamute endpoint
     metrics_pattern = .*@gpiosensor-.*|.*@sts-.*    # METRICS consumer pattern
- 
+
+log
+    config = "/etc/fty/ftylog.cfg"

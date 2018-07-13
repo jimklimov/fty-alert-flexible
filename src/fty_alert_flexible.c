@@ -33,6 +33,7 @@
 #define RULES_DIR        "./rules"
 #define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
 #define METRICS_PATTERN ".*";
+#define LOG_CONFIG      "/etc/fty/ftylog.cfg"
 
 
 static const char*
@@ -46,6 +47,7 @@ s_get (zconfig_t *config, const char* key, const char*dfl) {
 
 int main (int argc, char *argv [])
 {
+    const char *log_config      = LOG_CONFIG;
     bool  verbose               = false;
     const char *endpoint        = ENDPOINT;
     bool isCmdEndpoint           = false;
@@ -54,6 +56,7 @@ int main (int argc, char *argv [])
     bool isCmdRules              = false;
     const char *metrics_pattern = METRICS_PATTERN;
 
+    Ftylog *fty_log = ftylog_new ("fty-alert-flexible", LOG_CONFIG);
     int argn;
     for (argn = 1; argn < argc; argn++) {
         const char *param = NULL;
@@ -71,6 +74,7 @@ int main (int argc, char *argv [])
         }
         else if (streq (argv [argn], "--verbose") || streq (argv [argn], "-v")) {
             verbose = true;
+            ftylog_setVeboseMode(fty_log);
         }
         else if (streq (argv [argn], "--endpoint") || streq (argv [argn], "-e")) {
             if (param) {
@@ -95,13 +99,13 @@ int main (int argc, char *argv [])
             return 1;
         }
     }
-    ftylog_setInstance ("fty-alert-flexible", "/etc/fty/ftylog.cfg");
     //parse config file
     zconfig_t *config = zconfig_load(config_file);
     if (config) {
         // verbose
         if (streq (zconfig_get (config, "server/verbose", (verbose?"1":"0")), "1")) {
             verbose = true;
+            ftylog_setVeboseMode(fty_log);
         }
         //rules
         if (!isCmdRules){
@@ -116,11 +120,12 @@ int main (int argc, char *argv [])
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
 
-    }else{
+        log_config = s_get (config, "log/config", log_config);
+        ftylog_setConfigFile(fty_log, log_config);
+    } else{
         log_error ("Failed to load config file %s",config_file);
     }
-    if (verbose)
-        log_info ("fty_alert_flexible - started");
+    log_debug ("fty_alert_flexible - started");
     //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
     assert (server);
@@ -138,8 +143,7 @@ int main (int argc, char *argv [])
         zmsg_destroy (&msg);
     }
     zactor_destroy (&server);
-    if (verbose)
-        log_info ("fty_alert_flexible - exited");
-
+    log_debug ("fty_alert_flexible - exited");
+    ftylog_delete (fty_log);
     return 0;
 }
