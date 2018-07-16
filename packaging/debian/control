@@ -32,7 +32,6 @@ Build-Depends: debhelper (>= 9),
     libfty-proto-dev,
     liblua5.1-0-dev,
     liblog4cplus-dev,
-    libcxxtools-dev,
     libfty-common-logging-dev,
     systemd,
     dh-systemd,
@@ -58,7 +57,6 @@ Depends:
     libfty-proto-dev,
     liblua5.1-0-dev,
     liblog4cplus-dev,
-    libcxxtools-dev,
     libfty-common-logging-dev,
     libfty-alert-flexible0 (= ${binary:Version})
 Description: fty-alert-flexible development tools
