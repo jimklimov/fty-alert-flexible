@@ -36,7 +36,6 @@ struct _flexible_alert_t {
     zhash_t *metrics;
     zhash_t *enames;
     mlm_client_t *mlm;
-    bool verbose;
 };
 
 static void rule_freefn (void *rule)
@@ -82,7 +81,6 @@ flexible_alert_new (void)
     self->enames = zhash_new ();
     zhash_autofree (self->enames);
     self->mlm = mlm_client_new ();
-    self->verbose = false;
     return self;
 }
 
@@ -674,9 +672,6 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     assert (ruledir);
                     flexible_alert_load_rules (self, ruledir);
                 }
-                else if (streq (cmd, "VERBOSE")) {
-                    self->verbose = true;
-                }
                 else {
                     log_debug ("Unknown command.");
                 }
@@ -779,6 +774,9 @@ void
 flexible_alert_test (bool verbose)
 {
     printf (" * flexible_alert:\n");
+    ftylog_setInstance("flexible_alert_test","");
+    if (verbose)
+        ftylog_setVeboseMode(ftylog_getInstance());
 
     // Note: If your selftest reads SCMed fixture data, please keep it in
     // src/selftest-ro; if your test creates filesystem objects, please
@@ -801,7 +799,6 @@ flexible_alert_test (bool verbose)
     static const char *endpoint = "inproc://fty-metric-snmp";
     zactor_t *malamute = zactor_new (mlm_server, (void*) "Malamute");
     zstr_sendx (malamute, "BIND", endpoint, NULL);
-    if (verbose) zstr_send (malamute, "VERBOSE");
 
     // create flexible alert actor
     zactor_t *fs = zactor_new (flexible_alert_actor, NULL);

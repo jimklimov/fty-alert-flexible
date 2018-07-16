@@ -141,8 +141,6 @@ int main (int argc, char *argv [])
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (server, "LOADRULES", rules, NULL);
-    if (verbose)
-        zstr_sendx (server, "VERBOSE", NULL);
 
     while (!zsys_interrupted) {
         zmsg_t *msg = zactor_recv (server);
