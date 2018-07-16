@@ -35,7 +35,6 @@
 #define METRICS_PATTERN ".*";
 #define LOG_CONFIG      "/etc/fty/ftylog.cfg"
 
-
 static const char*
 s_get (zconfig_t *config, const char* key, const char*dfl) {
     assert (config);
@@ -47,7 +46,7 @@ s_get (zconfig_t *config, const char* key, const char*dfl) {
 
 int main (int argc, char *argv [])
 {
-    const char *log_config      = LOG_CONFIG;
+    Ftylog *fty_log             = NULL;
     bool  verbose               = false;
     const char *endpoint        = ENDPOINT;
     bool isCmdEndpoint           = false;
@@ -56,7 +55,6 @@ int main (int argc, char *argv [])
     bool isCmdRules              = false;
     const char *metrics_pattern = METRICS_PATTERN;
 
-    Ftylog *fty_log = ftylog_new ("fty-alert-flexible", LOG_CONFIG);
     int argn;
     for (argn = 1; argn < argc; argn++) {
         const char *param = NULL;
@@ -74,7 +72,6 @@ int main (int argc, char *argv [])
         }
         else if (streq (argv [argn], "--verbose") || streq (argv [argn], "-v")) {
             verbose = true;
-            ftylog_setVeboseMode(fty_log);
         }
         else if (streq (argv [argn], "--endpoint") || streq (argv [argn], "-e")) {
             if (param) {
@@ -105,7 +102,6 @@ int main (int argc, char *argv [])
         // verbose
         if (streq (zconfig_get (config, "server/verbose", (verbose?"1":"0")), "1")) {
             verbose = true;
-            ftylog_setVeboseMode(fty_log);
         }
         //rules
         if (!isCmdRules){
@@ -120,11 +116,15 @@ int main (int argc, char *argv [])
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
 
-        log_config = s_get (config, "log/config", log_config);
-        ftylog_setConfigFile(fty_log, log_config);
-    } else{
-        log_error ("Failed to load config file %s",config_file);
+        const char *log_config = s_get (config, "log/config", LOG_CONFIG);
+        ftylog_setInstance ("fty-alert-flexible", log_config);
+    } else {
+        // use zsys.. since we don't have log configuration
+        zsys_error ("Failed to load config file %s",config_file);
+        return 1;
     }
+    if (verbose)
+        ftylog_setVeboseMode(fty_log);
     log_debug ("fty_alert_flexible - started");
     //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
@@ -144,6 +144,7 @@ int main (int argc, char *argv [])
     }
     zactor_destroy (&server);
     log_debug ("fty_alert_flexible - exited");
-    ftylog_delete (fty_log);
+    if (fty_log)
+        ftylog_delete (fty_log);
     return 0;
 }
