@@ -33,7 +33,7 @@
 #define RULES_DIR        "./rules"
 #define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
 #define METRICS_PATTERN ".*";
-
+#define LOG_CONFIG      "/etc/fty/ftylog.cfg"
 
 static const char*
 s_get (zconfig_t *config, const char* key, const char*dfl) {
@@ -46,14 +46,15 @@ s_get (zconfig_t *config, const char* key, const char*dfl) {
 
 int main (int argc, char *argv [])
 {
+    Ftylog *fty_log             = NULL;
     bool  verbose               = false;
     const char *endpoint        = ENDPOINT;
     bool isCmdEndpoint           = false;
     const char *config_file     = CONFIG;
     const char *rules           = RULES_DIR;
     bool isCmdRules              = false;
-    const char *metrics_pattern = METRICS_PATTERN; 
-    
+    const char *metrics_pattern = METRICS_PATTERN;
+
     int argn;
     for (argn = 1; argn < argc; argn++) {
         const char *param = NULL;
@@ -106,20 +107,25 @@ int main (int argc, char *argv [])
         if (!isCmdRules){
             rules = s_get (config, "server/rules", rules);
         }
-        
+
         // endpoint
         if (!isCmdEndpoint){
             endpoint = s_get (config, "malamute/endpoint", endpoint);
         }
-        
+
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
-                
-    }else{
+
+        const char *log_config = s_get (config, "log/config", LOG_CONFIG);
+        ftylog_setInstance ("fty-alert-flexible", log_config);
+    } else {
+        // use zsys.. since we don't have log configuration
         zsys_error ("Failed to load config file %s",config_file);
+        return 1;
     }
     if (verbose)
-        zsys_info ("fty_alert_flexible - started");
+        ftylog_setVeboseMode(fty_log);
+    log_debug ("fty_alert_flexible - started");
     //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
     assert (server);
@@ -137,8 +143,8 @@ int main (int argc, char *argv [])
         zmsg_destroy (&msg);
     }
     zactor_destroy (&server);
-    if (verbose)
-        zsys_info ("fty_alert_flexible - exited");
-
+    log_debug ("fty_alert_flexible - exited");
+    if (fty_log)
+        ftylog_delete (fty_log);
     return 0;
 }
