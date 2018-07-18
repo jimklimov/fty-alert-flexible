@@ -46,7 +46,8 @@ s_get (zconfig_t *config, const char* key, const char*dfl) {
 
 int main (int argc, char *argv [])
 {
-    Ftylog *fty_log             = NULL;
+    const char * logConfigFile = "";
+    ftylog_setInstance("fty-alert-flexible","");
     bool  verbose               = false;
     const char *endpoint        = ENDPOINT;
     bool isCmdEndpoint           = false;
@@ -116,15 +117,20 @@ int main (int argc, char *argv [])
         //metrics_pattern
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
 
-        const char *log_config = s_get (config, "log/config", LOG_CONFIG);
-        ftylog_setInstance ("fty-alert-flexible", log_config);
+        logConfigFile = s_get (config, "log/config", "");
     } else {
-        // use zsys.. since we don't have log configuration
-        zsys_error ("Failed to load config file %s",config_file);
-        return 1;
+        log_error ("Failed to load config file %s",config_file);
     }
+
+    if (!streq(logConfigFile,""))
+    {
+        log_debug("Try to load log4cplus configuration file : %s",logConfigFile);
+        ftylog_setConfigFile(ftylog_getInstance(),logConfigFile);
+    }
+
     if (verbose)
-        ftylog_setVeboseMode(fty_log);
+        ftylog_setVeboseMode(ftylog_getInstance());
+
     log_debug ("fty_alert_flexible - started");
     //  Insert main code here
     zactor_t *server = zactor_new (flexible_alert_actor, NULL);
@@ -135,16 +141,12 @@ int main (int argc, char *argv [])
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (server, "LOADRULES", rules, NULL);
-    if (verbose)
-        zstr_sendx (server, "VERBOSE", NULL);
 
     while (!zsys_interrupted) {
         zmsg_t *msg = zactor_recv (server);
         zmsg_destroy (&msg);
     }
-    zactor_destroy (&server);
     log_debug ("fty_alert_flexible - exited");
-    if (fty_log)
-        ftylog_delete (fty_log);
+    zactor_destroy (&server);
     return 0;
 }
