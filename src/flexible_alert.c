@@ -138,7 +138,7 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
     }
     struct dirent * entry;
     while ((entry = readdir(dir)) != NULL) {
-        log_debug ("checking dir entry %s type %i", entry -> d_name, entry -> d_type);
+        log_trace ("checking dir entry %s type %i", entry -> d_name, entry -> d_type);
         if (entry -> d_type == DT_LNK || entry -> d_type == DT_REG || entry -> d_type == 0) {
             // file or link
             int l = strlen (entry -> d_name);
@@ -201,7 +201,7 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
         if (!ftymsg) {
             // some metrics are missing
             zlist_destroy (&params);
-            log_debug ("missing metric %s", topic);
+            log_warning ("missing metric %s", topic);
             zstr_free (&topic);
             return;
         }
@@ -350,7 +350,7 @@ ask_for_sensor (flexible_alert_t *self, const char* sensor_name)
         }
         return rv;
     }
-    log_debug ("I know this sensor %s", sensor_name);
+    log_trace ("I know this sensor %s", sensor_name);
     return 0;
 }
 
@@ -367,7 +367,7 @@ flexible_alert_handle_metric_sensor (flexible_alert_t *self, fty_proto_t **ftyms
     // get name of asset based on GPIO port
     const char *sensor_name = fty_proto_aux_string (ftymsg, FTY_PROTO_METRICS_SENSOR_AUX_SNAME, NULL);
     if (!sensor_name) {
-        log_debug ("No sensor name provided in sensor message");
+        log_warning ("No sensor name provided in sensor message");
         return;
     }
 
@@ -463,7 +463,7 @@ flexible_alert_handle_asset (flexible_alert_t *self, fty_proto_t *ftymsg)
             rule = (rule_t *)zhash_next (self->rules);
         }
         if (! zlist_size (functions_for_asset)) {
-            log_debug ("no rule for %s", assetname);
+            log_trace ("no rule for %s", assetname);
             zhash_delete (self->assets, assetname);
             zlist_destroy (&functions_for_asset);
             return;
@@ -673,7 +673,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                     flexible_alert_load_rules (self, ruledir);
                 }
                 else {
-                    log_debug ("Unknown command.");
+                    log_warning ("Unknown command.");
                 }
 
                 zstr_free (&cmd);
