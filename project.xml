@@ -41,15 +41,6 @@
         release = "1.0-FTY-master"
         />
 
-    <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h" prefix="fty_proto"
-        min_major = "1" min_minor = "0" min_patch = "0"
-        repository = "https://github.com/42ity/fty-proto.git"
-        test = "fty_proto_test" >
-        <use project = "malamute" />
-    </use>
-
-    <use project = "lua-5.1" />
-
     <use project = "fty-common-logging" libname = "libfty_common_logging" header="fty-log/fty_logger.h"
         repository = "https://github.com/42ity/fty-common-logging.git"
         release = "master"
@@ -61,6 +52,14 @@
             />
     </use>
 
+    <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h" prefix="fty_proto"
+        min_major = "1" min_minor = "0" min_patch = "0"
+        repository = "https://github.com/42ity/fty-proto.git"
+        test = "fty_proto_test" >
+        <use project = "malamute" />
+    </use>
+
+    <use project = "lua-5.1" />
 
     <class name = "rule" private = "1">class representing one rule</class>
     <class name = "vsjson" private = "1">JSON parser</class>
