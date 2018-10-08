@@ -692,7 +692,8 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                 }
                 if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
                     const char *address = mlm_client_address(self->mlm);
-                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS)) {
+                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS)||
+                        0 == strcmp(address, FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS)) {
                         // messages from FTY_PROTO_STREAM_METRICS are regular metrics
                         flexible_alert_handle_metric (self, &fmsg);
                     } else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
