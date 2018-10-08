@@ -165,6 +165,9 @@ flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *ass
 
     // Logical asset if specified
     const char *la = rule_logical_asset (rule);
+    if (!streq (la, "")) {
+        asset = la;
+    }
 
     // message
     zmsg_t *alert = fty_proto_encode_alert (
@@ -172,7 +175,7 @@ flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *ass
         time(NULL),
         ttl,
         rule_name (rule),
-        la ? la : asset,
+        asset,
         result == 0 ? "RESOLVED" : "ACTIVE",
         severity,
         message,
@@ -615,8 +618,8 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
             log_info ("Loading rule %s done", path);
         }
         zstr_free (&path);
-    }
 
+    }
     rule_destroy (&newrule);
     return reply;
 }
