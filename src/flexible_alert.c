@@ -165,7 +165,7 @@ flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *ass
 
     // Logical asset if specified
     const char *la = rule_logical_asset (rule);
-    if (!streq (la, "")) {
+    if (la != NULL && !streq (la, "")) {
         asset = la;
     }
 
