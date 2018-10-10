@@ -220,14 +220,18 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
     int result;
 
     rule_evaluate (rule, params, assetname, ename, &result, &message);
-    if (result != RULE_ERROR);
-    flexible_alert_send_alert (
-        self,
-        rule,
-        assetname,
-        result,
-        message, ttl * 5 / 2
-    );
+    if (result != RULE_ERROR) {
+        flexible_alert_send_alert (
+            self,
+            rule,
+            assetname,
+            result,
+            message, ttl * 5 / 2
+        );
+    }
+    else {
+        log_error ("error evaluating rule %s", rule_name (rule));
+    }
     zstr_free (&message);
     zlist_destroy (&params);
 }
