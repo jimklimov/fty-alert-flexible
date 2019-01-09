@@ -33,6 +33,7 @@
 #define RULES_DIR        "./rules"
 #define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
 #define METRICS_PATTERN ".*";
+#define ASSETS_PATERN   ".*"
 #define LOG_CONFIG      "/etc/fty/ftylog.cfg"
 
 static const char*
@@ -55,6 +56,7 @@ int main (int argc, char *argv [])
     const char *rules           = RULES_DIR;
     bool isCmdRules              = false;
     const char *metrics_pattern = METRICS_PATTERN;
+    const char *assets_pattern = ASSETS_PATERN;
 
     int argn;
     for (argn = 1; argn < argc; argn++) {
@@ -115,6 +117,7 @@ int main (int argc, char *argv [])
         }
 
         //metrics_pattern
+        assets_pattern = s_get (config, "malamute/assets_pattern", assets_pattern);
         metrics_pattern = s_get (config, "malamute/metrics_pattern", metrics_pattern);
 
         logConfigFile = s_get (config, "log/config", "");
@@ -133,11 +136,15 @@ int main (int argc, char *argv [])
 
     log_debug ("fty_alert_flexible - started");
     //  Insert main code here
-    zactor_t *server = zactor_new (flexible_alert_actor, NULL);
+    zlist_t *params = zlist_new ();
+    zlist_append (params, (void*) assets_pattern);
+    zlist_append (params, (void*) metrics_pattern);
+    
+    zactor_t *server = zactor_new (flexible_alert_actor, (void*) params);
     assert (server);
     zstr_sendx (server, "BIND", endpoint, ACTOR_NAME, NULL);
     zstr_sendx (server, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
-    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, metrics_pattern, NULL);
+    //zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, metrics_pattern, NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, "licensing.expire.*", NULL);

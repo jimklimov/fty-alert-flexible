@@ -234,6 +234,7 @@ int _vsjson_walk_object (vsjson_t *self, const char *prefix, vsjson_callback_t *
     int itemscount = 0;
     char *locator = NULL;
     char *key = NULL;
+    size_t s;
 
     const char *token = vsjson_next_token (self);
     while (token) {
@@ -257,7 +258,7 @@ int _vsjson_walk_object (vsjson_t *self, const char *prefix, vsjson_callback_t *
                 result = -1;
                 goto cleanup;
             }
-            size_t s = strlen (prefix) + strlen (key) + 2;
+            s = strlen (prefix) + strlen (key) + 2;
             locator = (char *)malloc (s);
             if (!locator) {
                 result = -2;

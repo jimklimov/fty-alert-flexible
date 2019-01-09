@@ -231,7 +231,7 @@ rule_json_callback (const char *locator, const char *value, void *data)
     if (strncmp (mylocator, "variables/", 10) == 0)
     {
         //  locator e.g. variables/low_critical
-        char *slash = strchr (mylocator, '/');
+        char *slash = (char*) strchr (mylocator, '/');
         if (!slash)
             return 0;
         slash = slash + 1;
