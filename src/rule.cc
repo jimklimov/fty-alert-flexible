@@ -369,7 +369,7 @@ rule_result_actions (rule_t *self, int result)
     zlist_t *list = NULL;
 
     if (self) {
-        char *results;
+        const char *results;
         switch (result) {
         case -2:
             results = "low_critical";
