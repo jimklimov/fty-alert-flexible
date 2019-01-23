@@ -647,7 +647,7 @@ flexible_alert_metric_polling (zsock_t *pipe, void *args)
       }
       if (zpoller_expired (poller)) {
         fty::shm::shmMetrics result;
-        fty::shm::read_metrics(FTY_SHM_METRIC_TYPE, assets_pattern, metrics_pattern, result);
+        fty::shm::read_metrics(assets_pattern, metrics_pattern, result);
         log_debug("number of metrics read : %d", result.size());
         for (auto &element : result) {
           flexible_alert_handle_metric(self, &element);
