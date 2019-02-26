@@ -42,7 +42,7 @@ const char *_vsjson_set_token (vsjson_t *self, const char *ptr, size_t len)
     if (!ptr || !self) return NULL;
 
     if (!len) len = strlen (ptr);
-    if (self->tokensize > len + 1) {
+    if (self->tokensize > (int) len + 1) {
         // fits in
         strncpy (self->token, ptr, len);
         self->token[len] = 0;
@@ -234,6 +234,7 @@ int _vsjson_walk_object (vsjson_t *self, const char *prefix, vsjson_callback_t *
     int itemscount = 0;
     char *locator = NULL;
     char *key = NULL;
+    size_t s;
 
     const char *token = vsjson_next_token (self);
     while (token) {
@@ -257,7 +258,7 @@ int _vsjson_walk_object (vsjson_t *self, const char *prefix, vsjson_callback_t *
                 result = -1;
                 goto cleanup;
             }
-            size_t s = strlen (prefix) + strlen (key) + 2;
+            s = strlen (prefix) + strlen (key) + 2;
             locator = (char *)malloc (s);
             if (!locator) {
                 result = -2;
@@ -508,7 +509,7 @@ char *vsjson_encode_nstring (const char *string, size_t len)
     if (!encoded) return NULL;
     memset (encoded, 0, capacity);
     encoded[0] = '"';
-    while (*p && p - string < len) {
+    while (*p && p - string < (int) len) {
         switch (*p) {
         case '"':
         case '\\':

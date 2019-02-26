@@ -65,14 +65,14 @@ GENERATED_DOCS =
 	@true
 
 GENERATED_DOCS += flexible_alert.txt flexible_alert.doc
-flexible_alert.txt: $(top_srcdir)/src/flexible_alert.c
+flexible_alert.txt: $(top_srcdir)/src/flexible_alert.cc
 	"$(srcdir)/mkman" "flexible_alert" "$(builddir)/flexible_alert.txt" "$(srcdir)/.."
 
 ### Note: for mains, we keep the source name rather than flattened name:c
 ### so that the manpages for binary programs match their name, at expense
 ### of perhaps being built in a subdirectory under doc/.
 GENERATED_DOCS += fty-alert-flexible.txt fty-alert-flexible.doc
-fty-alert-flexible.txt: $(top_srcdir)/src/fty_alert_flexible.c
+fty-alert-flexible.txt: $(top_srcdir)/src/fty_alert_flexible.cc
 	mkdir -p "$(builddir)/$(@D)"
 	"$(srcdir)/mkman" "fty_alert_flexible" "$(builddir)/fty-alert-flexible.txt" "$(srcdir)/.."
 

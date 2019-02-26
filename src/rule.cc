@@ -231,7 +231,7 @@ rule_json_callback (const char *locator, const char *value, void *data)
     if (strncmp (mylocator, "variables/", 10) == 0)
     {
         //  locator e.g. variables/low_critical
-        char *slash = strchr (mylocator, '/');
+        char *slash = (char*) strchr (mylocator, '/');
         if (!slash)
             return 0;
         slash = slash + 1;
@@ -369,7 +369,7 @@ rule_result_actions (rule_t *self, int result)
     zlist_t *list = NULL;
 
     if (self) {
-        char *results;
+        const char *results;
         switch (result) {
         case -2:
             results = "low_critical";

@@ -13,18 +13,19 @@ lib_LTLIBRARIES += src/libfty_alert_flexible.la
 pkgconfig_DATA = src/libfty_alert_flexible.pc
 
 src_libfty_alert_flexible_la_SOURCES = \
-    src/rule.c \
-    src/vsjson.c \
-    src/metrics.c \
-    src/flexible_alert.c \
+    src/rule.cc \
+    src/vsjson.cc \
+    src/metrics.cc \
+    src/flexible_alert.cc \
     src/platform.h
 
 if ENABLE_DRAFTS
 src_libfty_alert_flexible_la_SOURCES += \
-    src/fty_alert_flexible_private_selftest.c
+    src/fty_alert_flexible_private_selftest.cc
 endif
 
 src_libfty_alert_flexible_la_CPPFLAGS = ${AM_CPPFLAGS}
+src_libfty_alert_flexible_la_CXXFLAGS = ${AM_CXXFLAGS}
 
 src_libfty_alert_flexible_la_LDFLAGS = \
     -version-info @LTVER@ \
@@ -52,7 +53,7 @@ if ENABLE_FTY_ALERT_FLEXIBLE
 bin_PROGRAMS += src/fty-alert-flexible
 src_fty_alert_flexible_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_flexible_LDADD = ${program_libs}
-src_fty_alert_flexible_SOURCES = src/fty_alert_flexible.c
+src_fty_alert_flexible_SOURCES = src/fty_alert_flexible.cc
 src_fty_alert_flexible_config_DATA =
 src_fty_alert_flexible_config_DATA += src/fty-alert-flexible.cfg
 src_fty_alert_flexible_configdir = $(sysconfdir)/fty-alert-flexible
@@ -66,7 +67,7 @@ check_PROGRAMS += src/fty_alert_flexible_selftest
 noinst_PROGRAMS += src/fty_alert_flexible_selftest
 src_fty_alert_flexible_selftest_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_flexible_selftest_LDADD = ${program_libs}
-src_fty_alert_flexible_selftest_SOURCES = src/fty_alert_flexible_selftest.c
+src_fty_alert_flexible_selftest_SOURCES = src/fty_alert_flexible_selftest.cc
 endif #ENABLE_FTY_ALERT_FLEXIBLE_SELFTEST
 
 # define custom target for all products of /src
@@ -204,7 +205,7 @@ coverage: src/fty_alert_flexible_selftest $(top_builddir)/$(SELFTEST_DIR_RW) $(t
 	$(MAKE) check
 	lcov --base-directory . --directory . --capture -o coverage.info
 	lcov --remove coverage.info "/usr*" -o coverage.info
-	lcov --remove coverage.info "fty_alert_flexible_selftest.c" -o coverage.info
+	lcov --remove coverage.info "fty_alert_flexible_selftest.cc" -o coverage.info
 	$(RM) -rf coverage/*
 	genhtml -o coverage/ -t "fty-alert-flexible test coverage" --num-spaces 4 coverage.info
 else
@@ -326,7 +327,7 @@ endif
 
 cppcheck.xml:
 	@echo "Performing cppcheck static analysis..."
-	cppcheck --enable=all --inconclusive --xml --xml-version=2 . 2>"$@"
+	cppcheck --std=c++11 --enable=all --inconclusive --xml --xml-version=2 . 2>"$@"
 	@echo "The cppcheck static analysis is done"
 
 # Note: this recipe tests that the Git-based workspace reports no changed

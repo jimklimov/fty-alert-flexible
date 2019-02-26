@@ -156,9 +156,9 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
 void
 flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *asset, int result, const char *message, int ttl)
 {
-    char *severity = "OK";
-    if (result == -1 || result == 1) severity = "WARNING";
-    if (result == -2 || result == 2) severity = "CRITICAL";
+    char *severity = (char*) "OK";
+    if (result == -1 || result == 1) severity = (char*) "WARNING";
+    if (result == -2 || result == 2) severity = (char*) "CRITICAL";
 
     // topic
     char *topic = zsys_sprintf ("%s/%s@%s", rule_name (rule), severity, asset);
@@ -209,7 +209,7 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
             return;
         }
         // TTL should be set accorning shortest ttl in metric
-        if (ttl == 0 || ttl > fty_proto_ttl (ftymsg)) ttl = fty_proto_ttl (ftymsg);
+        if (ttl == 0 || ttl > (int) fty_proto_ttl (ftymsg)) ttl = fty_proto_ttl (ftymsg);
         zstr_free (&topic);
         zlist_append (params, (char *) fty_proto_value (ftymsg));
         param = rule_metric_next (rule);
@@ -246,7 +246,7 @@ flexible_alert_clean_metrics (flexible_alert_t *self)
     char *topic = (char *) zlist_first (topics);
     while (topic) {
         fty_proto_t *ftymsg = (fty_proto_t *) zhash_lookup (self->metrics, topic);
-        if (fty_proto_time (ftymsg) + fty_proto_ttl (ftymsg) < time (NULL)) {
+        if ( (int) (fty_proto_time (ftymsg) + fty_proto_ttl (ftymsg)) <   time (NULL)) {
             zhash_delete (self->metrics, topic);
         }
         topic = (char *) zlist_next (topics);
@@ -628,16 +628,67 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
     return reply;
 }
 
+void
+flexible_alert_metric_polling (zsock_t *pipe, void *args)
+{
+  zpoller_t *poller = zpoller_new (pipe, NULL);
+  zsock_signal (pipe, 0);
+  zlist_t *params = (zlist_t*) args;
+  char* assets_pattern = (char*)zlist_first (params);
+  char* metrics_pattern = (char*)zlist_next (params);
+  flexible_alert_t *self = (flexible_alert_t*)zlist_next (params);;  
+
+  while (!zsys_interrupted)
+  {
+      void *which = zpoller_wait (poller, fty_get_polling_interval() * 1000);
+      if (zpoller_terminated(poller) || zsys_interrupted) {
+          log_info ("outage_actor: Terminating.");
+          break;
+      }
+      if (zpoller_expired (poller)) {
+        fty::shm::shmMetrics result;
+        fty::shm::read_metrics(assets_pattern, metrics_pattern, result);
+        log_debug("number of metrics read : %d", result.size());
+        for (auto &element : result) {
+          flexible_alert_handle_metric(self, &element);
+        }
+      }
+      else if (which == pipe) {
+      zmsg_t *message = zmsg_recv (pipe);
+      if(message) {
+        char *cmd = zmsg_popstr (message);
+        if (cmd) {
+          if(streq (cmd, "$TERM")) {
+            zstr_free(&cmd);
+            zmsg_destroy(&message);
+            break;
+          }
+          zstr_free(&cmd);
+        }
+        zmsg_destroy(&message);
+      }
+    }
+      
+  }
+  zlist_destroy(&params);
+  zpoller_destroy(&poller);
+}
+
 //  --------------------------------------------------------------------------
 //  Actor running one instance of flexible alert class
 
 void
 flexible_alert_actor (zsock_t *pipe, void *args)
 {
-    flexible_alert_t *self = flexible_alert_new ();
+    flexible_alert_t *self = flexible_alert_new ();    
     assert (self);
     zsock_signal (pipe, 0);
     char *ruledir = NULL;
+    
+    
+    zlist_t *params = (zlist_t*) args;
+    zlist_append (params, self);
+    zactor_t *metric_polling =  zactor_new (flexible_alert_metric_polling, params);
 
     zpoller_t *poller = zpoller_new (mlm_client_msgpipe(self->mlm), pipe, NULL);
     while (!zsys_interrupted) {
@@ -770,6 +821,8 @@ flexible_alert_actor (zsock_t *pipe, void *args)
             zmsg_destroy (&msg);
         }
     }
+    
+    zactor_destroy(&metric_polling);
     zstr_free (&ruledir);
     zpoller_destroy (&poller);
     flexible_alert_destroy (&self);
@@ -785,7 +838,6 @@ flexible_alert_test (bool verbose)
     ftylog_setInstance("flexible_alert_test","");
     if (verbose)
         ftylog_setVeboseMode(ftylog_getInstance());
-
     // Note: If your selftest reads SCMed fixture data, please keep it in
     // src/selftest-ro; if your test creates filesystem objects, please
     // do so under src/selftest-rw. They are defined below along with a
@@ -794,6 +846,8 @@ flexible_alert_test (bool verbose)
     const char *SELFTEST_DIR_RW = "src/selftest-rw";
     assert (SELFTEST_DIR_RO);
     assert (SELFTEST_DIR_RW);
+    fty_shm_set_test_dir(SELFTEST_DIR_RW);
+    fty_shm_set_default_polling_interval(5);
     // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
     // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
 
@@ -809,12 +863,16 @@ flexible_alert_test (bool verbose)
     zstr_sendx (malamute, "BIND", endpoint, NULL);
 
     // create flexible alert actor
-    zactor_t *fs = zactor_new (flexible_alert_actor, NULL);
+    zlist_t *params = zlist_new ();
+    zlist_append (params, (void*) ".*");
+    zlist_append (params, (void*) ".*");
+
+    zactor_t *fs = zactor_new (flexible_alert_actor, (void*) params);
     assert (fs);
     zstr_sendx (fs, "BIND", endpoint, "me", NULL);
     zstr_sendx (fs, "PRODUCER", FTY_PROTO_STREAM_ALERTS_SYS, NULL);
     zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
+    //zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_METRICS, ".*", NULL);
     zstr_sendx (fs, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, ".*", NULL);
     char *rules_dir = zsys_sprintf ("%s/rules", SELFTEST_DIR_RO);
     assert (rules_dir != NULL);
@@ -828,17 +886,17 @@ flexible_alert_test (bool verbose)
     mlm_client_set_consumer (asset, FTY_PROTO_STREAM_ALERTS_SYS, ".*");
 
     // metric client
-    mlm_client_t *metric = mlm_client_new ();
-    mlm_client_connect (metric, endpoint, 5000, "metric");
-    mlm_client_set_producer (metric, FTY_PROTO_STREAM_METRICS);
+//    mlm_client_t *metric = mlm_client_new ();
+//    mlm_client_connect (metric, endpoint, 5000, "metric");
+//    mlm_client_set_producer (metric, FTY_PROTO_STREAM_METRICS);
 
     // let malamute establish everything
     zclock_sleep (200);
     {
         zhash_t *ext = zhash_new();
         zhash_autofree (ext);
-        zhash_insert (ext, "group.1", "all-upses");
-        zhash_insert (ext, "name", "mý děvíce");
+        zhash_insert (ext, "group.1", (void*)"all-upses");
+        zhash_insert (ext, "name", (void*)"mý děvíce");
         zmsg_t *assetmsg = fty_proto_encode_asset (
             NULL,
             "mydevice",
@@ -853,15 +911,16 @@ flexible_alert_test (bool verbose)
     {
         printf ("\t#1 Create alert ");
         // send metric, receive alert
-        zmsg_t *msg = fty_proto_encode_metric (
-            NULL,
-            time (NULL),
-            60,
-            "status.ups",
-            "mydevice",
-            "64",
-            "");
-        mlm_client_send (metric, "status.ups@mydevice", &msg);
+//        zmsg_t *msg = fty_proto_encode_metric (
+//            NULL,
+//            time (NULL),
+//            60,
+//            "status.ups",
+//            "mydevice",
+//            "64",
+//            "");
+//        mlm_client_send (metric, "status.ups@mydevice", &msg);
+        fty::shm::write_metric("mydevice", "status.ups", "64", "", 5);
 
         zmsg_t *alert = mlm_client_recv (asset);
         assert (is_fty_proto (alert));
@@ -971,12 +1030,12 @@ flexible_alert_test (bool verbose)
         zmsg_destroy (&reply);
         printf ("OK\n");
     }
-    mlm_client_destroy (&metric);
     mlm_client_destroy (&asset);
     // destroy actor
     zactor_destroy (&fs);
     //destroy malamute
     zactor_destroy (&malamute);
+    fty_shm_delete_test_dir();
     //  @end
     printf ("OK\n");
 }

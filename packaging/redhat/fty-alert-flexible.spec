@@ -51,13 +51,16 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd
 %{?systemd_requires}
 BuildRequires:  xmlto
+BuildRequires:  gcc-c++
 BuildRequires:  libsodium-devel
 BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  log4cplus-devel
 BuildRequires:  fty-common-logging-devel
+BuildRequires:  fty-common-devel
 BuildRequires:  fty-proto-devel
+BuildRequires:  fty_shm-devel
 BuildRequires:  lua-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
@@ -88,7 +91,9 @@ Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       log4cplus-devel
 Requires:       fty-common-logging-devel
+Requires:       fty-common-devel
 Requires:       fty-proto-devel
+Requires:       fty_shm-devel
 Requires:       lua-devel
 
 %description devel
