@@ -274,13 +274,20 @@ is_gpi_metric (fty_proto_t* metric)
 //  Function handles incoming metrics, drives lua evaluation
 
 void
-flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p)
+flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bool shm_version=false)
 {
     if (!self || !ftymsg_p || !*ftymsg_p) return;
     fty_proto_t *ftymsg = *ftymsg_p;
     if (fty_proto_id (ftymsg) != FTY_PROTO_METRIC) return;
 
-    if (zhash_lookup (self->metrics, mlm_client_subject (self->mlm))) {
+    if(shm_version) {
+      char *subject = zsys_sprintf ("%s@%s", fty_proto_type (ftymsg), fty_proto_name (ftymsg));
+      if (zhash_lookup (self->metrics, subject)) {
+        flexible_alert_clean_metrics (self);
+      }
+      zstr_free(&subject);
+    }
+    else if (zhash_lookup (self->metrics, mlm_client_subject (self->mlm))) {
         flexible_alert_clean_metrics (self);
     }
 
@@ -650,7 +657,7 @@ flexible_alert_metric_polling (zsock_t *pipe, void *args)
         fty::shm::read_metrics(assets_pattern, metrics_pattern, result);
         log_debug("number of metrics read : %d", result.size());
         for (auto &element : result) {
-          flexible_alert_handle_metric(self, &element);
+          flexible_alert_handle_metric(self, &element, true);
         }
       }
       else if (which == pipe) {
