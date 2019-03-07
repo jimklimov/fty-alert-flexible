@@ -274,13 +274,13 @@ is_gpi_metric (fty_proto_t* metric)
 //  Function handles incoming metrics, drives lua evaluation
 
 void
-flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bool shm_version=false)
+flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bool isShm=false)
 {
     if (!self || !ftymsg_p || !*ftymsg_p) return;
     fty_proto_t *ftymsg = *ftymsg_p;
     if (fty_proto_id (ftymsg) != FTY_PROTO_METRIC) return;
 
-    if(shm_version) {
+    if(isShm) {
       char *subject = zsys_sprintf ("%s@%s", fty_proto_type (ftymsg), fty_proto_name (ftymsg));
       if (zhash_lookup (self->metrics, subject)) {
         flexible_alert_clean_metrics (self);
