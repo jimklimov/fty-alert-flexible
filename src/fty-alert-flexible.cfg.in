@@ -8,7 +8,7 @@ server
 
 malamute
     endpoint = ipc://@/malamute                     # Malamute endpoint
-    //metrics_pattern = .*@gpiosensor-.*|.*@sts-.*    # METRICS consumer pattern
+    #metrics_pattern = .*@gpiosensor-.*|.*@sts-.*    # METRICS consumer pattern
     metrics_pattern = .*    # METRICS consumer pattern
     assets_pattern = gpiosensor-.*|sts-.*
 
