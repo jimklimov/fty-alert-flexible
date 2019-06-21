@@ -72,9 +72,9 @@ flexible_alert.txt: $(top_srcdir)/src/flexible_alert.cc
 ### so that the manpages for binary programs match their name, at expense
 ### of perhaps being built in a subdirectory under doc/.
 GENERATED_DOCS += fty-alert-flexible.txt fty-alert-flexible.doc
-fty-alert-flexible.txt: $(top_srcdir)/src/fty_alert_flexible.cc
+fty-alert-flexible.txt: $(top_srcdir)/src/fty-alert-flexible.cc
 	mkdir -p "$(builddir)/$(@D)"
-	"$(srcdir)/mkman" "fty_alert_flexible" "$(builddir)/fty-alert-flexible.txt" "$(srcdir)/.."
+	"$(srcdir)/mkman" "fty-alert-flexible" "$(builddir)/fty-alert-flexible.txt" "$(srcdir)/.."
 
 
 clean-local:
