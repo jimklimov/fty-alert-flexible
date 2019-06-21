@@ -31,9 +31,7 @@
 #include "platform.h"
 
 //  External API
-#include "../include/fty_alert_flexible.h"
-
-//  Extra headers
+#include "../include/fty-alert-flexible.h"
 
 //  Opaque class structures to allow forward references
 #ifndef RULE_T_DEFINED
@@ -48,6 +46,8 @@ typedef struct _vsjson_t vsjson_t;
 typedef struct _metrics_t metrics_t;
 #define METRICS_T_DEFINED
 #endif
+
+//  Extra headers
 
 //  Internal API
 

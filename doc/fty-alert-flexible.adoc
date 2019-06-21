@@ -19,7 +19,7 @@ and public classes in a shared library:
 
 Generally you can compile and link against it like this:
 ----
-#include <fty_alert_flexible.h>
+#include <fty-alert-flexible.h>
 
 cc ['flags'] 'files' -lfty_alert_flexible ['libraries']
 ----

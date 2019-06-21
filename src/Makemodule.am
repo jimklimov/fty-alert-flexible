@@ -53,7 +53,7 @@ if ENABLE_FTY_ALERT_FLEXIBLE
 bin_PROGRAMS += src/fty-alert-flexible
 src_fty_alert_flexible_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_alert_flexible_LDADD = ${program_libs}
-src_fty_alert_flexible_SOURCES = src/fty_alert_flexible.cc
+src_fty_alert_flexible_SOURCES = src/fty-alert-flexible.cc
 src_fty_alert_flexible_config_DATA =
 src_fty_alert_flexible_config_DATA += src/fty-alert-flexible.cfg
 src_fty_alert_flexible_configdir = $(sysconfdir)/fty-alert-flexible
@@ -212,6 +212,16 @@ else
 coverage: src/fty_alert_flexible_selftest
 	@echo "call make clean && configure --with-gcov to enable code coverage"
 	@exit 1
+endif
+
+bindings: python-bindings
+
+python-bindings:
+if ENABLE_BINDINGS_PYTHON
+	-( cd bindings/python && python setup.py install )
+else
+	@echo "Python Bindings not enabled or missing setup.py... skipping"
+
 endif
 
 # A series of tests that the codebase and recipes are pretty, easy
