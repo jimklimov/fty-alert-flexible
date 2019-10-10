@@ -40,8 +40,6 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
-// Tests for stable public classes:
-    { "flexible_alert", flexible_alert_test, true, true, NULL },
 #ifdef FTY_ALERT_FLEXIBLE_BUILD_DRAFT_API
 // Tests for stable/draft private classes:
 // Now built only with --enable-drafts, so even stable builds are hidden behind the flag
@@ -50,6 +48,8 @@ all_tests [] = {
     { "metrics", NULL, true, false, "metrics_test" },
     { "private_classes", NULL, false, false, "$ALL" }, // compat option for older projects
 #endif // FTY_ALERT_FLEXIBLE_BUILD_DRAFT_API
+// Tests for stable public classes:
+    { "flexible_alert", flexible_alert_test, true, true, NULL },
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
 };
 
