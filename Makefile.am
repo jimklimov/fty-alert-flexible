@@ -16,9 +16,7 @@ AM_CPPFLAGS = \
     ${libzmq_CFLAGS} \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
-    ${log4cplus_CFLAGS} \
     ${fty_common_logging_CFLAGS} \
-    ${cxxtools_CFLAGS} \
     ${fty_common_CFLAGS} \
     ${fty_proto_CFLAGS} \
     ${fty_shm_CFLAGS} \
@@ -26,7 +24,7 @@ AM_CPPFLAGS = \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${cxxtools_LIBS} ${fty_common_LIBS} ${fty_proto_LIBS} ${fty_shm_LIBS} ${lua_5_1_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${fty_common_logging_LIBS} ${fty_common_LIBS} ${fty_proto_LIBS} ${fty_shm_LIBS} ${lua_5_1_LIBS}
 
 SUBDIRS = doc
 SUBDIRS += include
@@ -51,9 +49,7 @@ EXTRA_DIST += \
     Findlibzmq.cmake \
     Findczmq.cmake \
     Findmalamute.cmake \
-    Findlog4cplus.cmake \
     Findfty_common_logging.cmake \
-    Findcxxtools.cmake \
     Findfty_common.cmake \
     Findfty_proto.cmake \
     Findfty_shm.cmake \
