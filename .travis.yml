@@ -69,6 +69,7 @@ pkg_deps_prereqs_source: &pkg_deps_prereqs_source
     - libfty-common-logging-dev
     - libfty-common-dev
     - libfty-proto-dev
+    - cxxtools-dev
     - libfty-shm-dev
 
 # NOTE: Our forks are checked out and built without pkg dependencies in use

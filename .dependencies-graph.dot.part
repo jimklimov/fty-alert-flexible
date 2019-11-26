@@ -5,4 +5,5 @@
    fty-alert-flexible -> fty-common-logging;
    fty-alert-flexible -> fty-common;
    fty-alert-flexible -> fty-proto;
+   fty-alert-flexible -> cxxtools;
    fty-alert-flexible -> fty_shm;

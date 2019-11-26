@@ -74,6 +74,11 @@
         min_major = "1" min_minor = "0" min_patch = "0"
         repository = "https://github.com/42ity/fty-proto.git"
         test = "fty_proto_test" />
+    
+    <use project = "cxxtools"
+        test = "cxxtools::Utf8Codec::Utf8Codec"
+        header = "cxxtools/allocator.h"
+        repository = "https://github.com/42ity/cxxtools.git" />
 
     <use project = "fty_shm"
         libname = "libfty_shm"
