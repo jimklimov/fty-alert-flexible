@@ -545,23 +545,36 @@ rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ena
 {
     if (!self || !params || !iname || !result || !message) return;
 
+    log_trace("rule_evaluate %s", rule_name(self));
+
     *result = RULE_ERROR;
     *message = NULL;
     if (!self -> lua) {
-        if (! rule_compile (self)) return;
+        if (! rule_compile (self)) {
+            log_error("rule_compile %s failed", rule_name(self));
+            return;
+        }
     }
+
     lua_pushstring(self -> lua, ename ? ename : iname);
     lua_setglobal(self -> lua, "NAME");
     lua_pushstring(self -> lua, iname);
     lua_setglobal(self -> lua, "INAME");
     lua_settop (self->lua, 0);
     lua_getglobal (self->lua, "main");
+
     char *value = (char *) zlist_first (params);
+    int i = 0;
     while (value) {
+        log_trace("rule_evaluate: push param #%d: %s", i, value);
         lua_pushstring (self -> lua, value);
         value = (char *) zlist_next (params);
+        i++;
     }
-    if (lua_pcall(self -> lua, zlist_size (params), 2, 0) == 0) {
+
+    int r = lua_pcall(self -> lua, zlist_size (params), 2, 0);
+
+    if (r == 0) {
         // calculated
         if (lua_isnumber (self -> lua, -1)) {
             *result = lua_tointeger(self -> lua, -1);
@@ -573,9 +586,14 @@ rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ena
             const char *msg = lua_tostring (self->lua, -1);
             if (msg) *message = strdup (msg);
         }
-        else
-            log_debug ("rule_evaluate: invalid content of self->lua.");
+        else {
+            log_error("rule_evaluate: invalid content of self->lua.");
+        }
+
         lua_pop (self->lua, 2);
+    }
+    else {
+        log_error("rule_evaluate: lua_pcall %s failed (r: %d)", rule_name(self), r);
     }
 }
 
