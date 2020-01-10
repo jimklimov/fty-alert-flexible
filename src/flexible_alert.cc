@@ -28,6 +28,13 @@
 
 #include "fty_alert_flexible_classes.h"
 
+
+#define ANSI_COLOR_WHITE_ON_BLUE  "\x1b[44;97m"
+#define ANSI_COLOR_BOLD    "\x1b[1;39m"
+#define ANSI_COLOR_RED     "\x1b[1;31m"
+#define ANSI_COLOR_YELLOW  "\x1b[1;33m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 //  Structure of our class
 
 struct _flexible_alert_t {
@@ -181,12 +188,20 @@ flexible_alert_send_alert (flexible_alert_t *self, rule_t *rule, const char *ass
         message,
         rule_result_actions(rule, result)); // action list
 
+    if (streq(severity, "OK")) {
+        log_debug(ANSI_COLOR_BOLD "flexible_alert_send_alert %s, asset: %s: severity: %s (result: %d)" ANSI_COLOR_RESET,
+            rule_name(rule), asset, severity, result);
+    }
+    else {
+        log_info(ANSI_COLOR_YELLOW "flexible_alert_send_alert %s, asset: %s: severity: %s (result: %d)" ANSI_COLOR_RESET,
+            rule_name(rule), asset, severity, result);
+    }
+
     mlm_client_send (self -> mlm, topic, &alert);
 
     zstr_free (&topic);
     zmsg_destroy (&alert);
 }
-
 
 void
 flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *assetname, const char *ename)
@@ -195,8 +210,8 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
     zlist_autofree (params);
 
     // prepare lua function parameters
-    int ttl = 0;
 
+    int ttl = 0;
     const char *param = rule_metric_first (rule);
     while (param) {
         char *topic = zsys_sprintf ("%s@%s", param, assetname);
@@ -204,7 +219,7 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
         if (!ftymsg) {
             // some metrics are missing
             zlist_destroy (&params);
-            log_warning ("missing metric %s", topic);
+            log_trace ("abort evaluation of rule %s because %s metric is missing", rule_name(rule), topic);
             zstr_free (&topic);
             return;
         }
@@ -216,10 +231,14 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
     }
 
     // call the lua function
-    char *message;
-    int result;
+    char *message = NULL;
+    int result = 0;
 
     rule_evaluate (rule, params, assetname, ename, &result, &message);
+
+    log_debug(ANSI_COLOR_WHITE_ON_BLUE  "rule_evaluate %s, assetname: %s: result = %d" ANSI_COLOR_RESET,
+        rule_name(rule), assetname, result);
+
     if (result != RULE_ERROR) {
         flexible_alert_send_alert (
             self,
@@ -230,8 +249,9 @@ flexible_alert_evaluate (flexible_alert_t *self, rule_t *rule, const char *asset
         );
     }
     else {
-        log_error ("error evaluating rule %s", rule_name (rule));
+        log_error (ANSI_COLOR_RED "error evaluating rule %s" ANSI_COLOR_RESET, rule_name (rule));
     }
+
     zstr_free (&message);
     zlist_destroy (&params);
 }
@@ -247,6 +267,7 @@ flexible_alert_clean_metrics (flexible_alert_t *self)
     while (topic) {
         fty_proto_t *ftymsg = (fty_proto_t *) zhash_lookup (self->metrics, topic);
         if ( (int) (fty_proto_time (ftymsg) + fty_proto_ttl (ftymsg)) <   time (NULL)) {
+            log_warning("delete topic %s", topic);
             zhash_delete (self->metrics, topic);
         }
         topic = (char *) zlist_next (topics);
@@ -297,6 +318,8 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bo
     const char *extport = fty_proto_aux_string (ftymsg, "ext-port", NULL);
     char * qty_dup = (char *)quantity;
 
+    log_trace("handle metric: assetname: %s, qty_dup: %s", assetname, qty_dup);
+
     // fix quantity for sensors connected to other sensors
     if (extport) {
         // only sensors connected to other sensors have ext-name set
@@ -314,6 +337,7 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bo
         if (extport) {
             free(qty_dup);
         }
+        log_trace("functions_for_asset is NULL (assetname: %s", assetname);
         return;
     }
 
@@ -323,6 +347,8 @@ flexible_alert_handle_metric (flexible_alert_t *self, fty_proto_t **ftymsg_p, bo
     while (func) {
         rule_t *rule = (rule_t *) zhash_lookup (self -> rules, func);
         if (rule_metric_exists (rule, qty_dup)) {
+            log_trace("rule_metric_exists in %s (%s, qty: %s)", func, rule_name(rule), qty_dup);
+
             // we have to evaluate this function for our asset
             // save metric into cache
             if (! metric_saved) {
@@ -638,47 +664,51 @@ flexible_alert_add_rule (flexible_alert_t *self, const char *json, const char *o
 void
 flexible_alert_metric_polling (zsock_t *pipe, void *args)
 {
-  zpoller_t *poller = zpoller_new (pipe, NULL);
-  zsock_signal (pipe, 0);
-  zlist_t *params = (zlist_t*) args;
-  char* assets_pattern = (char*)zlist_first (params);
-  char* metrics_pattern = (char*)zlist_next (params);
-  flexible_alert_t *self = (flexible_alert_t*)zlist_next (params);;  
+    zpoller_t *poller = zpoller_new (pipe, NULL);
+    zsock_signal (pipe, 0);
+    zlist_t *params = (zlist_t*) args;
+    char* assets_pattern = (char*)zlist_first (params);
+    char* metrics_pattern = (char*)zlist_next (params);
+    flexible_alert_t *self = (flexible_alert_t*)zlist_next (params);;
 
-  while (!zsys_interrupted)
-  {
-      void *which = zpoller_wait (poller, fty_get_polling_interval() * 1000);
-      if (zpoller_terminated(poller) || zsys_interrupted) {
-          log_info ("outage_actor: Terminating.");
-          break;
-      }
-      if (zpoller_expired (poller)) {
-        fty::shm::shmMetrics result;
-        fty::shm::read_metrics(assets_pattern, metrics_pattern, result);
-        log_debug("number of metrics read : %d", result.size());
-        for (auto &element : result) {
-          flexible_alert_handle_metric(self, &element, true);
-        }
-      }
-      else if (which == pipe) {
-      zmsg_t *message = zmsg_recv (pipe);
-      if(message) {
-        char *cmd = zmsg_popstr (message);
-        if (cmd) {
-          if(streq (cmd, "$TERM")) {
-            zstr_free(&cmd);
-            zmsg_destroy(&message);
+    log_info("flexible_alert_metric_polling started (assets_pattern: %s, metrics_pattern: %s)", assets_pattern, metrics_pattern);
+
+    while (!zsys_interrupted)
+    {
+        void *which = zpoller_wait (poller, fty_get_polling_interval() * 1000);
+        if (zpoller_terminated(poller) || zsys_interrupted) {
             break;
-          }
-          zstr_free(&cmd);
         }
-        zmsg_destroy(&message);
-      }
+
+        if (zpoller_expired (poller)) {
+            fty::shm::shmMetrics result;
+            fty::shm::read_metrics(assets_pattern, metrics_pattern, result);
+            log_debug("read metrics (size: %d, assets: %s, metrics: %s)", result.size(), assets_pattern, metrics_pattern);
+            for (auto &element : result) {
+                flexible_alert_handle_metric(self, &element, true);
+            }
+        }
+        else if (which == pipe) {
+            zmsg_t *message = zmsg_recv (pipe);
+            if (message) {
+                char *cmd = zmsg_popstr (message);
+                if (cmd) {
+                    if(streq (cmd, "$TERM")) {
+                        zstr_free(&cmd);
+                        zmsg_destroy(&message);
+                        break;
+                    }
+                    zstr_free(&cmd);
+                }
+                zmsg_destroy(&message);
+            }
+        }
     }
-      
-  }
-  zlist_destroy(&params);
-  zpoller_destroy(&poller);
+
+    log_info ("flexible_alert_metric_polling: Terminating.");
+
+    zlist_destroy(&params);
+    zpoller_destroy(&poller);
 }
 
 //  --------------------------------------------------------------------------
@@ -687,12 +717,11 @@ flexible_alert_metric_polling (zsock_t *pipe, void *args)
 void
 flexible_alert_actor (zsock_t *pipe, void *args)
 {
-    flexible_alert_t *self = flexible_alert_new ();    
+    flexible_alert_t *self = flexible_alert_new ();
     assert (self);
     zsock_signal (pipe, 0);
     char *ruledir = NULL;
-    
-    
+
     zlist_t *params = (zlist_t*) args;
     zlist_append (params, self);
     zactor_t *metric_polling =  zactor_new (flexible_alert_metric_polling, params);
@@ -828,7 +857,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
             zmsg_destroy (&msg);
         }
     }
-    
+
     zactor_destroy(&metric_polling);
     zstr_free (&ruledir);
     zpoller_destroy (&poller);
