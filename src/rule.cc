@@ -69,6 +69,8 @@ rule_new (void)
 {
     rule_t *self = (rule_t *) zmalloc (sizeof (rule_t));
     assert (self);
+    memset(self, 0, sizeof(*self));
+
     //  Initialize class properties here
     self -> metrics = zlist_new ();
     zlist_autofree (self -> metrics);
@@ -95,7 +97,7 @@ rule_new (void)
 }
 
 //  --------------------------------------------------------------------------
-//  zhash_free_fn callback for result_actions
+//  zhash_free_fn callback for result_actions list
 static void free_action(void *data)
 {
     zlist_t *list = (zlist_t*)data;
@@ -177,18 +179,26 @@ rule_json_callback (const char *locator, const char *value, void *data)
         const char *prev = end - strlen ("action/");
         // OLD FORMAT:
         // results/high_critical/action/0
-        if (*end >= '0' && *end <= '9' && strncmp (prev, "action", strlen("action")) == 0)
+        if (*end >= '0' && *end <= '9' && strncmp (prev, "action", strlen("action")) == 0) {
+            zstr_free(&self->parser.action);
             self->parser.action = vsjson_decode_string (value);
+        }
         // NEW FORMAT:
         // results/high_critical/action/0/action
         // results/high_critical/action/0/asset for action == "GPO_INTERACTION"
         // results/high_critical/action/0/mode  ditto
-        else if (streq (end, "action"))
+        else if (streq (end, "action")) {
+            zstr_free(&self->parser.action);
             self->parser.action = vsjson_decode_string (value);
-        else if (streq (end, "asset"))
+        }
+        else if (streq (end, "asset")) {
+            zstr_free(&self->parser.act_asset);
             self->parser.act_asset = vsjson_decode_string (value);
-        else if (streq (end, "mode"))
+        }
+        else if (streq (end, "mode")) {
+            zstr_free(&self->parser.act_mode);
             self->parser.act_mode = vsjson_decode_string (value);
+        }
         else
             return 0;
         // support empty action set
@@ -846,6 +856,9 @@ rule_destroy (rule_t **self_p)
         zstr_free (&self->description);
         zstr_free (&self->logical_asset);
         zstr_free (&self->evaluation);
+        zstr_free (&self->parser.action);
+        zstr_free (&self->parser.act_asset);
+        zstr_free (&self->parser.act_mode);
         if (self->lua) lua_close (self->lua);
         zlist_destroy (&self->metrics);
         zlist_destroy (&self->assets);
