@@ -480,6 +480,7 @@ int rule_save (rule_t *self, const char *path)
     return 0;
 }
 
+// ZZZ return 1 if ok, else 0
 static int rule_compile (rule_t *self)
 {
     if (!self) return 0;
@@ -497,7 +498,8 @@ static int rule_compile (rule_t *self)
     if (!self->lua) return 0;
     luaL_openlibs(self -> lua); // get functions like print();
     if (luaL_dostring (self -> lua, self -> evaluation) != 0) {
-        log_error ("rule %s has an error", self -> name);
+        log_error ("rule '%s' has an error", self -> name);
+        log_debug ("ERROR, rule '%s' evaluation part\n%s", self -> name, self -> evaluation);
         lua_close (self -> lua);
         self -> lua = NULL;
         return 0;
@@ -867,46 +869,101 @@ vsjson_test (bool verbose)
     printf (" * vsjson: skip\n");
 }
 
-void json_rule_test(const char *dir, const char *basename)
+void rule_test_json(const char *dir, const char *basename)
 {
+    assert(dir && basename);
+
     rule_t *self = rule_new ();
     assert (self);
-    char *rule_file = zsys_sprintf ("%s/rules/%s.rule", dir, basename);
-    char *json_file = zsys_sprintf ("%s/rules/%s.json", dir, basename);
-    assert (rule_file && json_file);
-    rule_load (self, rule_file);
-    zstr_free (&rule_file);
-    FILE *f;
-    char *stock_json;
-    assert (f = fopen (json_file, "r"));
-    assert (stock_json = (char *)calloc (1, 4096));
-    assert (fread (stock_json, 1, 4096, f));
-    fclose (f);
-    zstr_free (&json_file);
-    // test rule to json
-    char *json = rule_json (self);
-    // XXX: This is fragile, as we require the json to be bit-identical.
-    // If you get an error here, manually review the actual difference.
-    // In particular, the hash order is not stable
-    if (!streq (json, stock_json)) {
-        fprintf (stderr, "Generated json is different\nEXPECTED:\n%sGOT:\n%s",
-                stock_json, json);
-        abort ();
+
+    {
+        char *rule_file = zsys_sprintf ("%s/%s.rule", dir, basename);
+        assert (rule_file);
+        int r = rule_load (self, rule_file);
+        assert(r == 0);
+        zstr_free (&rule_file);
     }
-    zstr_free (&stock_json);
+
+    char *json = NULL;
+    {
+        // read json related file
+        char *stock_json = NULL;
+        {
+            char *json_file = zsys_sprintf ("%s/%s.json", dir, basename);
+            assert (json_file);
+            FILE *f = fopen (json_file, "r");
+            assert (f);
+            stock_json = (char *)calloc (1, 4096);
+            assert (stock_json);
+            assert (fread (stock_json, 1, 4096, f));
+            fclose (f);
+            zstr_free (&json_file);
+        }
+
+        // test rule to json
+        json = rule_json (self);
+        assert(json);
+        // XXX: This is fragile, as we require the json to be bit-identical.
+        // If you get an error here, manually review the actual difference.
+        // In particular, the hash order is not stable
+        if (!streq (json, stock_json)) {
+            fprintf (stderr, "Generated json is different\nEXPECTED:\n%sGOT:\n%s",
+                    stock_json, json);
+            assert(0);
+        }
+        zstr_free (&stock_json);
+    }
+    assert(json);
+
     rule_t *rule = rule_new ();
+    assert(rule);
     rule_parse (rule, json);
     char *json2 = rule_json (rule);
+    assert(json2);
+
     assert (streq (rule_name(rule), rule_name (self)));
+
     if (!streq (json, json2)) {
         fprintf (stderr, "Generated json differs after second pass\nEXPECTED:\n%sGOT:\n%s",
                 json, json2);
-        abort ();
+        assert(0);
     }
-    rule_destroy (&rule);
+
     zstr_free (&json);
     zstr_free (&json2);
+    rule_destroy (&rule);
     rule_destroy (&self);
+
+    assert(rule == NULL);
+    assert(self == NULL);
+}
+
+void rule_test_lua(const char *dir, const char *basename)
+{
+    assert(dir && basename);
+
+    int r;
+    rule_t *self = rule_new ();
+    assert (self);
+
+    // load rule
+    {
+        char *rule_file = zsys_sprintf ("%s/%s.rule", dir, basename);
+        assert (rule_file);
+        r = rule_load (self, rule_file);
+        if (r != 0)
+            { log_error("rule_load %s/%s.rule, r: %d", dir, basename, r); }
+        assert(r == 0);
+        zstr_free (&rule_file);
+    }
+
+    r = rule_compile(self);
+    if (r != 1)
+        { log_error("rule_compile %s/%s.rule, r: %d", dir, basename, r); }
+    assert(r == 1);
+
+    rule_destroy (&self);
+    assert(self == NULL);
 }
 
 void
@@ -918,18 +975,15 @@ rule_test (bool verbose)
     // src/selftest-ro; if your test creates filesystem objects, please
     // do so under src/selftest-rw. They are defined below along with a
     // usecase (asert) to make compilers happy.
-    const char *SELFTEST_DIR_RO = "src/selftest-ro";
-    const char *SELFTEST_DIR_RW = "src/selftest-rw";
-    assert (SELFTEST_DIR_RO);
-    assert (SELFTEST_DIR_RW);
-    // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
-    // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
-    char *rule_file = NULL;
+    #define SELFTEST_DIR_RO "src/selftest-ro"
+    #define SELFTEST_DIR_RW "src/selftest-rw"
+
+    #define SELFTEST_DIR_RULES SELFTEST_DIR_RO"/rules"
 
     //  @selftest
     //  Simple create/destroy test
     {
-        printf ("      Simple create/destroy test ... ");
+        printf ("      Simple create/destroy test ... \n");
         rule_t *self = rule_new ();
         assert (self);
         rule_destroy (&self);
@@ -939,10 +993,10 @@ rule_test (bool verbose)
 
     //  Load test #1
     {
-        printf ("      Load test #1 ... ");
+        printf ("      Load test #1 ... \n");
         rule_t *self = rule_new ();
         assert (self);
-        rule_file = zsys_sprintf ("%s/rules/%s", SELFTEST_DIR_RO, "load.rule");
+        char *rule_file = zsys_sprintf ("%s/%s", SELFTEST_DIR_RULES, "load.rule");
         assert (rule_file);
         rule_load (self, rule_file);
         zstr_free (&rule_file);
@@ -953,10 +1007,10 @@ rule_test (bool verbose)
 
     //  Load test #2 - tests 'variables' section
     {
-        printf ("      Load test #2 - 'variables' section ... ");
+        printf ("      Load test #2 - 'variables' section ... \n");
         rule_t *self = rule_new ();
         assert (self);
-        rule_file = zsys_sprintf ("%s/rules/%s", SELFTEST_DIR_RO, "threshold.rule");
+        char *rule_file = zsys_sprintf ("%s/%s", SELFTEST_DIR_RULES, "threshold.rule");
         assert (rule_file);
         rule_load (self, rule_file);
         zstr_free (&rule_file);
@@ -989,13 +1043,59 @@ rule_test (bool verbose)
         printf ("      OK\n");
     }
 
-    printf ("      Load test #3 - json construction test ... ");
-    json_rule_test (SELFTEST_DIR_RO, "test");
-    printf ("      OK\n");
+    //  Load test #3
+    {
+        printf ("      Load test #3 - json construction test ... \n");
+        rule_test_json (SELFTEST_DIR_RULES, "test");
+        printf ("      OK\n");
+    }
 
-    printf ("      Load test #4 - old json format ... ");
-    json_rule_test (SELFTEST_DIR_RO, "old");
-    printf ("      OK\n");
+    //  Load test #4
+    {
+        printf ("      Load test #4 - old json format ... \n");
+        rule_test_json (SELFTEST_DIR_RULES, "old");
+        printf ("      OK\n");
+    }
+
+    //  Load test #5 - lua compile
+    {
+        printf ("      Load test #5 - lua compile ... \n");
+
+        const char *rules[] = {  // .rule files with valid 'evaluation' part
+
+            "sts-frequency",
+            "sts-preferred-source",
+            "sts-voltage",
+            "threshold",
+            "ups",
+
+            //
+            // public flexible templates
+            // copied from 42ity/fty-alert-engine/src/rule_templtes
+            //
+
+            "templates/door-contact.state-change@__device_sensorgpio__",
+            "templates/fire-detector-extinguisher.state-change@__device_sensorgpio__",
+            "templates/fire-detector.state-change@__device_sensorgpio__",
+            "templates/licensing.expire@__device_rackcontroller__",
+            "templates/pir-motion-detector.state-change@__device_sensorgpio__",
+            "templates/smoke-detector.state-change@__device_sensorgpio__",
+            "templates/sts-frequency@__device_sts__",
+            "templates/sts-preferred-source@__device_sts__",
+            "templates/sts-voltage@__device_sts__",
+            "templates/vibration-sensor.state-change@__device_sensorgpio__",
+            "templates/water-leak-detector.state-change@__device_sensorgpio__",
+            NULL
+        };
+
+        for (int i = 0; rules[i]; i++) {
+            printf ("            Load test #5 - lua compile - '%s/%s.rule' ... \n", SELFTEST_DIR_RULES, rules[i]);
+            rule_test_lua (SELFTEST_DIR_RULES, rules[i]);
+        }
+
+        printf ("      OK\n");
+    }
+
     //  @end
     printf ("OK\n");
 }
