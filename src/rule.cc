@@ -902,13 +902,14 @@ void rule_test_json(const char *dir, const char *basename)
         // read json related file
         char *stock_json = NULL;
         {
+            const size_t MAX_SIZE = 4096;
             char *json_file = zsys_sprintf ("%s/%s.json", dir, basename);
             assert (json_file);
             FILE *f = fopen (json_file, "r");
             assert (f);
-            stock_json = (char *)calloc (1, 4096);
+            stock_json = (char *)calloc (1, MAX_SIZE + 1);
             assert (stock_json);
-            assert (fread (stock_json, 1, 4096, f));
+            assert (fread (stock_json, 1, MAX_SIZE, f));
             fclose (f);
             zstr_free (&json_file);
         }
