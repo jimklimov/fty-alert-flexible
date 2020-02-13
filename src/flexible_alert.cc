@@ -123,7 +123,8 @@ flexible_alert_load_one_rule (flexible_alert_t *self, const char *fullpath)
         log_debug ("rule %s loaded", fullpath);
         zhash_update (self->rules, rule_name (rule), rule);
         zhash_freefn (self->rules, rule_name (rule), rule_freefn);
-    } else {
+    }
+    else {
         log_error ("failed to load rule '%s'", fullpath);
         rule_destroy (&rule);
     }
@@ -138,9 +139,11 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
     if (!self || !path) return;
     char fullpath [PATH_MAX];
 
+    log_info ("reading rules from dir '%s'", path);
+
     DIR *dir = opendir(path);
     if (!dir) {
-        log_error ("cannot open rule dir '%s'", path);
+        log_error ("cannot open dir '%s' (%s)", path, strerror(errno));
         return;
     }
     struct dirent * entry;
@@ -151,7 +154,7 @@ flexible_alert_load_rules (flexible_alert_t *self, const char *path)
             int l = strlen (entry -> d_name);
             log_debug ("loading rule file: %s", entry -> d_name);
             if ( l > 5 && streq (&(entry -> d_name[l - 5]), ".rule")) {
-                // json file
+                // .rule file (json payload)
                 snprintf (fullpath, PATH_MAX, "%s/%s", path, entry -> d_name);
                 flexible_alert_load_one_rule (self, fullpath);
             }
@@ -781,22 +784,25 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                 if (fty_proto_id (fmsg) == FTY_PROTO_ASSET) {
                     flexible_alert_handle_asset (self, fmsg);
                 }
-                if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
+                else if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
                     const char *address = mlm_client_address(self->mlm);
-                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS)||
+                    if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS) ||
                         0 == strcmp(address, FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS)) {
                         // messages from FTY_PROTO_STREAM_METRICS are regular metrics
                         flexible_alert_handle_metric (self, &fmsg);
-                    } else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
+                    }
+                    else if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS_SENSOR)) {
                         // messages from FTY_PROTO_STREAM_METRICS_SENSORS are gpi sensors
                         if (is_gpi_metric (fmsg))
                             flexible_alert_handle_metric_sensor (self, &fmsg);
-                    } else {
+                    }
+                    else {
                         log_debug("Message proto ID = FTY_PROTO_METRIC, message address not valid = '%s'", address);
                     }
                 }
                 fty_proto_destroy (&fmsg);
-            } else if (streq (mlm_client_command (self->mlm), "MAILBOX DELIVER")) {
+            }
+            else if (streq (mlm_client_command (self->mlm), "MAILBOX DELIVER")) {
                 // someone is addressing us directly
                 // protocol frames COMMAND/param1/param2
                 char *cmd = zmsg_popstr (msg);
