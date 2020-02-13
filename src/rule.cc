@@ -439,7 +439,10 @@ rule_global_variables (rule_t *self)
 int rule_load (rule_t *self, const char *path)
 {
     int fd = open (path, O_RDONLY);
-    if (fd == -1) return -1;
+    if (fd == -1) {
+        log_error ("can't open file %s (%s)", path, strerror(errno));
+        return -1;
+    }
 
     struct stat rstat;
     if (fstat (fd, &rstat) != 0) {

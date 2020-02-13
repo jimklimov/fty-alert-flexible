@@ -147,7 +147,11 @@ int main (int argc, char *argv [])
     //zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS, metrics_pattern, NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
-    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, "licensing.expire.*", NULL);
+
+    // Note: 'licensing.expire.*' pattern don't work ! (nothing appears on stream)
+    // Was: zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, "licensing.expire.*", NULL);
+    zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, ".*", NULL);
+
     zstr_sendx (server, "LOADRULES", rules, NULL);
 
     while (!zsys_interrupted) {
