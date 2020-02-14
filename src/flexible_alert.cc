@@ -33,6 +33,7 @@
 #define ANSI_COLOR_BOLD    "\x1b[1;39m"
 #define ANSI_COLOR_RED     "\x1b[1;31m"
 #define ANSI_COLOR_YELLOW  "\x1b[1;33m"
+#define ANSI_COLOR_CYAN    "\x1b[1;36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 //  Structure of our class
@@ -785,7 +786,7 @@ flexible_alert_actor (zsock_t *pipe, void *args)
                 }
                 else if (fty_proto_id (fmsg) == FTY_PROTO_METRIC) {
                     const char *address = mlm_client_address(self->mlm);
-                    log_trace(ANSI_COLOR_YELLOW "Receive metric %s@%s on stream %s" ANSI_COLOR_RESET,
+                    log_trace(ANSI_COLOR_CYAN "Receive metric %s@%s on stream %s" ANSI_COLOR_RESET,
                         fty_proto_type (fmsg), fty_proto_name (fmsg), address);
 
                     if (0 == strcmp(address, FTY_PROTO_STREAM_METRICS) ||
