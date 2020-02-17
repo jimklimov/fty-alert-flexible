@@ -148,7 +148,8 @@ int main (int argc, char *argv [])
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_METRICS_SENSOR, "status.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_ASSETS, ".*", NULL);
 
-    // Note: 'licensing.expire.*' pattern don't work ! (nothing appears on stream)
+    // Note: 'licensing.expire.*' pattern don't work ! (nothing appears on stream) BUT IT SHOULD WORK
+    // TODO: investigate on regex with malamute/zmq
     // Was: zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, "licensing.expire.*", NULL);
     zstr_sendx (server, "CONSUMER", FTY_PROTO_STREAM_LICENSING_ANNOUNCEMENTS, ".*", NULL);
 
