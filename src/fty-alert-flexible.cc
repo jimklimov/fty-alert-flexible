@@ -30,9 +30,9 @@
 
 #define ACTOR_NAME      "fty-alert-flexible"
 #define ENDPOINT        "ipc://@/malamute"
-#define RULES_DIR        "./rules"
-#define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg";
-#define METRICS_PATTERN ".*";
+#define RULES_DIR       "/var/lib/fty/fty-alert-flexible/rules"
+#define CONFIG          "/etc/fty-alert-flexible/fty-alert-flexible.cfg"
+#define METRICS_PATTERN ".*"
 #define ASSETS_PATTERN  ".*"
 #define LOG_CONFIG      "/etc/fty/ftylog.cfg"
 
