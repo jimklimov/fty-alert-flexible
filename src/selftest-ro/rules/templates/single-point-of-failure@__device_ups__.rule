@@ -1,7 +1,7 @@
 {
     "flexible" : {
         "name"          : "single-point-of-failure@__name__",
-        "description"   : "TRANSLATE_LUA(Powerchain analysis and detection of Single Point of Failure)",
+        "description"   : "TRANSLATE_LUA(Detection of Single Point of Failure)",
         "rule_cat"      : ["CAT_ALL"],
         "metrics"       : ["single-point-of-failure"],
         "assets"        : ["__name__"],
@@ -13,7 +13,7 @@
                 if isSPoF == '0' then
                     return OK, string.format('{ \"key\": \"TRANSLATE_LUA(Device {{ename}} is not a Single Point of Failure.)\", \"variables\": {\"ename\": {\"value\" : \"__ename__\"}}}')
                 end
-                return WARNING, string.format('{ \"key\": \"TRANSLATE_LUA(Device {{ename}} was detected as a Single Point of Failure.)\", \"variables\": {\"ename\": {\"value\" : \"__ename__\"}}}')
+                return WARNING, string.format('{ \"key\": \"TRANSLATE_LUA(Device {{ename}} is detected as a Single Point of Failure.)\", \"variables\": {\"ename\": {\"value\" : \"__ename__\"}}}')
             end
         "
     }
