@@ -429,9 +429,7 @@ rule_global_variables (rule_t *self)
 {
     assert (self);
     return zhashx_dup (self->variables);
-
 }
-
 
 //  --------------------------------------------------------------------------
 //  Load json rule from file
@@ -551,19 +549,22 @@ static int rule_compile (rule_t *self)
     return 1;
 }
 
-
 //  --------------------------------------------------------------------------
 //  Evaluate rule
 
 void
 rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ename, int *result, char **message)
 {
-    if (!self || !params || !iname || !result || !message) return;
+    if (result) *result = RULE_ERROR;
+    if (message) *message = NULL;
+
+    if (!self || !params || !iname || !result || !message) {
+        log_error("bad args");
+        return;
+    }
 
     log_trace("rule_evaluate %s", rule_name(self));
 
-    *result = RULE_ERROR;
-    *message = NULL;
     if (!self -> lua) {
         if (! rule_compile (self)) {
             log_error("rule_compile %s failed", rule_name(self));
@@ -618,6 +619,7 @@ rule_evaluate (rule_t *self, zlist_t *params, const char *iname, const char *ena
 static char * s_string_append (char **string_p, size_t *capacity, const char *append)
 {
     if (! string_p) return NULL;
+    if (! capacity) return NULL;
     if (! append) return *string_p;
 
     char *string = *string_p;
@@ -625,6 +627,7 @@ static char * s_string_append (char **string_p, size_t *capacity, const char *ap
         string = (char *) zmalloc (512);
         *capacity = 512;
     }
+
     size_t l1 = strlen (string);
     size_t l2 = strlen (append);
     size_t required = l1+l2+1;
@@ -1102,6 +1105,7 @@ rule_test (bool verbose)
             "templates/sts-voltage@__device_sts__",
             "templates/vibration-sensor.state-change@__device_sensorgpio__",
             "templates/water-leak-detector.state-change@__device_sensorgpio__",
+            "templates/single-point-of-failure@__device_ups__",
             NULL
         };
 
