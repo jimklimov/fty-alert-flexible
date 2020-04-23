@@ -2,7 +2,7 @@
 #    fty-alert-flexible - agent for creating evaluating alerts
 #
 #    Copyright (C) 2016 - 2017 Tomas Halman
-#    Copyright (C) 2017 - 2019 Eaton
+#    Copyright (C) 2017 - 2020 Eaton
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
