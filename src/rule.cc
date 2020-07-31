@@ -199,6 +199,10 @@ rule_json_callback (const char *locator, const char *value, void *data)
             zstr_free(&self->parser.act_mode);
             self->parser.act_mode = vsjson_decode_string (value);
         }
+        else if (streq (end, "severity") || streq (end, "description")) {
+            // action == AUTOMATION
+            // automation members, supported but dropped
+        }
         else
             return 0;
         // support empty action set
@@ -210,7 +214,8 @@ rule_json_callback (const char *locator, const char *value, void *data)
         }
         else {
             is_email = streq(self->parser.action, "EMAIL") ||
-                            streq(self->parser.action, "SMS");
+                            streq(self->parser.action, "SMS") ||
+                            streq(self->parser.action, "AUTOMATION");
             if (!is_email && (!self->parser.act_asset || !self->parser.act_mode)) {
                 log_debug("%s: action is not mail, nor asset nor mode", __func__);
                 return 0;
@@ -277,7 +282,10 @@ rule_json_callback (const char *locator, const char *value, void *data)
 
 int rule_parse (rule_t *self, const char *json)
 {
-    return vsjson_parse (json, rule_json_callback, self, true);
+    int r = vsjson_parse (json, rule_json_callback, self, true);
+    if (r != 0)
+        log_error("vsjson_parse failed (r: %d)\njson:\n%s\n", r, json);
+    return r;
 }
 
 //  --------------------------------------------------------------------------
