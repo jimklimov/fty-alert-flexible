@@ -207,17 +207,17 @@ rule_json_callback (const char *locator, const char *value, void *data)
             return 0;
         // support empty action set
         bool is_empty = false;
-        bool is_email = false;
+        bool is_simple = false;
         if (!self->parser.action) {
             log_debug("%s: no action configured", __func__);
             is_empty = true;
         }
         else {
-            is_email = streq(self->parser.action, "EMAIL") ||
-                            streq(self->parser.action, "SMS") ||
-                            streq(self->parser.action, "AUTOMATION");
-            if (!is_email && (!self->parser.act_asset || !self->parser.act_mode)) {
-                log_debug("%s: action is not mail, nor asset nor mode", __func__);
+            is_simple = streq(self->parser.action, "EMAIL") ||
+                        streq(self->parser.action, "SMS") ||
+                        streq(self->parser.action, "AUTOMATION");
+            if (!is_simple && (!self->parser.act_asset || !self->parser.act_mode)) {
+                log_debug("%s: action is not recognized, nor asset nor mode", __func__);
                 return 0;
             }
         }
@@ -234,7 +234,7 @@ rule_json_callback (const char *locator, const char *value, void *data)
         char *key = (char *)zmalloc(slash - start + 1);
         memcpy(key, start, slash - start);
         log_debug("%s: key = %s", __func__, key);
-        if (is_email) {
+        if (is_simple) {
             rule_add_result_action (self, key, self->parser.action);
         } else {
             if (!is_empty) {
@@ -245,8 +245,9 @@ rule_json_callback (const char *locator, const char *value, void *data)
                 rule_add_result_action (self, key, action);
                 zstr_free (&action);
             }
-            else
+            else {
                 rule_add_result_action (self, key, NULL);
+            }
         }
         zstr_free (&key);
         zstr_free (&self->parser.action);
@@ -297,7 +298,6 @@ rule_name (rule_t *self)
     assert (self);
     return self->name;
 }
-
 
 //  --------------------------------------------------------------------------
 //  Get the logical asset
@@ -463,6 +463,7 @@ int rule_load (rule_t *self, const char *path)
         log_error ("Error while reading rule %s", path);
     }
     close (fd);
+
     int result = rule_parse (self, buffer);
     free (buffer);
     return result;
@@ -691,8 +692,8 @@ static char * s_actions_to_json_array (zlist_t *actions)
         const char *p = item;
         const char *colon = strchr (p, ':');
         if (!colon) {
-            // EMAIL or SMS
-            if (!streq(item, "EMAIL") && !streq(item, "SMS"))
+            // recognized action?
+            if (!streq(item, "EMAIL") && !streq(item, "SMS") && !streq(item, "AUTOMATION"))
                 log_warning ("Unrecognized action: %s", item);
             char *encoded = vsjson_encode_string(item);
             s_string_append (&json, &jsonsize, encoded);
